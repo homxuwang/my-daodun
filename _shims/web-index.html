@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="icon" href="data:,">
+<title>奶娃割草 · 浏览器预览</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0714;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+  #app{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{background:#0b0714;image-rendering:pixelated}
+  #err{position:fixed;left:8px;top:8px;color:#ff8080;font:12px monospace;white-space:pre-wrap;z-index:9;max-width:96vw}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="err"></div>
+<script type="importmap">
+{ "imports": { "cc": "./js/cc.js", "cc/env": "./js/cc-env.js" } }
+</script>
+<script type="module">
+  window.addEventListener('error', e => { document.getElementById('err').textContent += (e.message + '\n'); });
+  window.addEventListener('unhandledrejection', e => { document.getElementById('err').textContent += (String(e.reason && e.reason.stack || e.reason) + '\n'); });
+  import('./js/assets/web-main.js').catch(e => { document.getElementById('err').textContent += (e.stack || e) + '\n'; });
+</script>
+</body>
+</html>

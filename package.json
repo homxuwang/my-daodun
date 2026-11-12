@@ -1,0 +1,20 @@
+{
+  "name": "naiwa-gcao",
+  "uuid": "1ac16aac-605d-4fdd-8797-82ad03f2dafa",
+  "creator": {
+    "version": "3.8.8"
+  },
+  "description": "奶娃割草：以「我的刀盾」为主角的割草幸存者小游戏（微信/抖音小游戏 + 浏览器预览）",
+  "type": "module",
+  "scripts": {
+    "web": "node tools/compile-web.mjs && node tools/serve.mjs 8090",
+    "build:web": "node tools/compile-web.mjs",
+    "check": "tsc -p tools/tsconfig.check.json",
+    "serve": "node tools/serve.mjs 8090",
+    "build:wechat": "bash tools/build-wechat.sh"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.65.0",
+    "typescript": "^5.6.0"
+  }
+}

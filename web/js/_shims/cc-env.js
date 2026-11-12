@@ -1,0 +1,11 @@
+export const EDITOR = false;
+export const TEST = false;
+export const DEBUG = false;
+export const BUILD = false;
+export const PREVIEW = true;
+export const NATIVE = false;
+export const HTML5 = true;
+export const WECHATGAME = false;
+export const BYTEDANCE = false;
+export const RUNTIME_BASED = false;
+export const MINIGAME = false;

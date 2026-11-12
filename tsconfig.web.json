@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "outDir": "web/js",
+    "rootDir": ".",
+    "strict": false,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "rewriteRelativeImportExtensions": true,
+    "types": [],
+    "baseUrl": ".",
+    "paths": {
+      "cc": [
+        "_shims/cc.ts"
+      ],
+      "cc/env": [
+        "_shims/cc-env.ts"
+      ]
+    },
+    "lib": [
+      "ES2020",
+      "DOM"
+    ]
+  },
+  "include": [
+    "assets/scripts/**/*.ts",
+    "assets/web-main.ts",
+    "_shims/cc.ts",
+    "_shims/cc-env.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "library",
+    "temp",
+    "check-out",
+    "tools"
+  ]
+}
