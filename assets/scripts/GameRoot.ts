@@ -1436,7 +1436,7 @@ export class GameRoot extends Component {
         for (const k in this.screens) this.screens[k as State]!.active = k === s;
         const inRun = s === 'play' || s === 'levelup' || s === 'chest' || s === 'pause' || s === 'revive';
         this.hud.active = inRun;
-        this.overlay.node.active = s !== 'play' && s !== 'victory' && s !== 'dying';
+        this.overlay.node.active = s !== 'play' && s !== 'victory' && s !== 'dying' && s !== 'privacy' && s !== 'legal';
         this.overlay.color = inRun || s === 'result' ? C_DIM : new Color(0, 0, 0, s === 'menu' ? 90 : 190);
         this.touchLayer.active = s === 'play';
         if (s !== 'play') this.onJoyEnd();

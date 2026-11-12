@@ -177,8 +177,6 @@ class NodeBase {
     listenerCount(evt: string) { return this._listeners.get(evt)?.size || 0; }
 
     addComponent<T = any>(ctor: any): T {
-        // 与 Cocos 一致：挂组件前确保 UITransform 已存在（首次 addComponent 时补）
-        this.getComponent(UITransform);
         const c = typeof ctor === 'function' ? new ctor() : ctor;
         c.node = this;
         this._components.push(c);

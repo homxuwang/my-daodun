@@ -27,9 +27,20 @@ function boot() {
     window.addEventListener('resize', layout);
     // 触摸 → 设计分辨率坐标（左下原点、y 向上，与 Cocos UI 一致）
     const toDesign = (clientX, clientY) => clientToDesign(clientX, clientY, canvas.getBoundingClientRect(), DESIGN_W, DESIGN_H);
+    let currentTouch = null;
     const fire = (type, clientX, clientY) => {
         const { x, y } = toDesign(clientX, clientY);
-        input.emit(type, new EventTouch(x, y));
+        if (!currentTouch || type === 'touch-start') {
+            currentTouch = new EventTouch(x, y);
+        }
+        else {
+            currentTouch._x = x;
+            currentTouch._y = y;
+        }
+        input.emit(type, currentTouch);
+        if (type === 'touch-end' || type === 'touch-cancel') {
+            currentTouch = null;
+        }
     };
     canvas.addEventListener('pointerdown', (e) => { fire('touch-start', e.clientX, e.clientY); });
     canvas.addEventListener('pointermove', (e) => fire('touch-move', e.clientX, e.clientY));
