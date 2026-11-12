@@ -86,7 +86,7 @@ function boot() {
         requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
-    console.log('[web] 奶娃割草 已启动');
+    console.log('[web] 我的刀盾 已启动');
 }
 if (typeof document !== 'undefined') {
     if (document.readyState === 'loading')

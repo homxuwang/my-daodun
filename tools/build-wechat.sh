@@ -22,7 +22,7 @@ set +e
 code=$?
 set -e
 if [ $code -ne 36 ] && [ $code -ne 0 ]; then echo "❌ 构建失败（退出码 $code），日志：build/build-wechat.log"; exit 1; fi
-sed -i 's/"projectname":"[^"]*"/"projectname":"奶娃割草"/' build/wechatgame/project.config.json
+sed -i 's/"projectname":"[^"]*"/"projectname":"我的刀盾"/' build/wechatgame/project.config.json
 if [ -f build/wechatgame/first-screen.js ]; then
   sed -i 's/^let useLogo = true;/let useLogo = false;/' build/wechatgame/first-screen.js
   rm -f build/wechatgame/logo.png build/wechatgame/slogan.png

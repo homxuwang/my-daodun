@@ -24,8 +24,8 @@ export const DESIGN_W = 720;
 export const DESIGN_H = 1280;
 
 // 游戏名与适龄提示（上架前与微信后台填写的保持一致）
-export const GAME_NAME = '奶娃割草';
-export const GAME_SUBTITLE = 'KNIFE & SHIELD BABY';
+export const GAME_NAME = '我的刀盾';
+export const GAME_SUBTITLE = 'MY KNIFE & SHIELD';
 export const AGE_RATING = '12+';
 export const GAME_VERSION = 'v1.0.0';
 // 新手渐进解锁：完成 N 局后开放（只影响主菜单入口，不影响局内数值）
@@ -37,7 +37,7 @@ const UNLOCKS: { id: string; name: string; runs: number }[] = [
     { id: 'rank', name: '好友排行', runs: 1 },
     { id: 'daily', name: '每日挑战', runs: 2 },
 ];
-// 点击主界面奶娃时随机说的话
+// 点击主界面刀盾时随机说的话
 const FROG_LINES = ['菜是原罪！', '刀盾出击!', '奶龙助阵!', '今天也要割草', '红月来了也不怕!', '再来一局', '别戳了, 疼!', '满级必胜!'];
 const AGE_TIP = [
     '1. 本游戏是一款休闲动作类游戏，适用于年满 12 周岁及以上的用户，',
@@ -251,7 +251,7 @@ export class GameRoot extends Component {
             if (cv && cv.toTempFilePathSync) imageUrl = cv.toTempFilePathSync({ x: 0, y: 0, width: cv.width, height: Math.round(cv.width * 0.8), destWidth: 500, destHeight: 400 });
         } catch (e) { /* 截图失败则使用默认分享图 */ }
         const daily = this.dailyRun ? Social.dateKey() : '';
-        const title = daily ? `今天的每日挑战我坚持了 ${this.fmtTime(b.time)}，同一关卡，敢来比比吗？` : b.won ? `我的奶娃在《${GAME_NAME}》里击败了梗王！你也来试试？` : `我的奶娃坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
+        const title = daily ? `今天的每日挑战我坚持了 ${this.fmtTime(b.time)}，同一关卡，敢来比比吗？` : b.won ? `我的刀盾在《${GAME_NAME}》里击败了梗王！你也来试试？` : `我的刀盾坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
         // 卡片携带战绩：好友点开后显示挑战横幅（不发放任何奖励）
         const query = Social.shareQuery({ time: b.time, kills: b.kills, won: b.won ? 1 : 0, daily });
         Analytics.track('share', { from: daily ? 'daily' : 'result', won: b.won ? 1 : 0 });
@@ -267,7 +267,7 @@ export class GameRoot extends Component {
                 Analytics.track('share', { from: 'menu', won: 0 });
                 const d = Save.data;
                 const query = d.bestTime ? Social.shareQuery({ time: d.bestTime, kills: d.bestKills, won: d.wins > 0 ? 1 : 0, daily: '' }) : '';
-                return { title: d.bestTime ? `${GAME_NAME}：我的奶娃坚持了 ${this.fmtTime(d.bestTime)}，你能撑多久？` : `${GAME_NAME}：胖奶娃割草，在红月下坚持 15 分钟！`, query };
+                return { title: d.bestTime ? `${GAME_NAME}：我的刀盾坚持了 ${this.fmtTime(d.bestTime)}，你能撑多久？` : `${GAME_NAME}：刀盾割草，在红月下坚持 15 分钟！`, query };
             };
             if (w.onShareAppMessage) w.onShareAppMessage(msg);
             if (w.onShareTimeline) w.onShareTimeline(msg);
@@ -570,7 +570,7 @@ export class GameRoot extends Component {
     private buildDying() {
         const s = this.screen('dying');
         this.dieDim = mkRect(s, this.vw, this.vh, new Color(10, 4, 20, 0), 'dim');
-        this.dieLabel = mkLabel(s, '奶娃倒下了…', 56, new Color(255, 230, 200, 255), 'center', 5);
+        this.dieLabel = mkLabel(s, '刀盾倒下了…', 56, new Color(255, 230, 200, 255), 'center', 5);
         this.dieLabel.node.setPosition(0, this.vh * 0.12);
     }
 
@@ -828,14 +828,14 @@ export class GameRoot extends Component {
             chal.node.active = !!c && this.state === 'menu';
             if (!c) return;
             const daily = Social.challengeIsToday(c);
-            chalText.string = `好友在${daily ? '今天的每日挑战' : '奶娃割草'}中坚持了 ${this.fmtTime(c.time)}\n击败 ${c.kills} 只怪物${c.won ? '，成功通关' : ''}\n你能超过吗？` + (c.daily && !daily ? '（那天的每日挑战已结束，改为普通局）' : '');
+            chalText.string = `好友在${daily ? '今天的每日挑战' : '我的刀盾'}中坚持了 ${this.fmtTime(c.time)}\n击败 ${c.kills} 只怪物${c.won ? '，成功通关' : ''}\n你能超过吗？` + (c.daily && !daily ? '（那天的每日挑战已结束，改为普通局）' : '');
         });
 
         // 首胜后提示一次「添加到我的小程序」（指向右上角胶囊）
         const add = mkPanel(s, 420, 150, new Color(255, 250, 235, 250), new Color(60, 40, 20, 255));
         add.node.setPosition(this.vw / 2 - 230, this.vh / 2 - this.safeTop - 70);
         mkLabel(add.node, '▲', 30, new Color(60, 40, 20, 255), 'center', 0).node.setPosition(150, 92);
-        mkLabel(add.node, '点右上角「···」选择\n「添加到我的小程序」\n下次在微信首页下拉就能找到奶娃', 21, new Color(60, 40, 20, 255), 'center', 0).node.setPosition(0, 6);
+        mkLabel(add.node, '点右上角「···」选择\n「添加到我的小程序」\n下次在微信首页下拉就能找到刀盾', 21, new Color(60, 40, 20, 255), 'center', 0).node.setPosition(0, 6);
         add.node.on(Node.EventType.TOUCH_END, () => {
             Save.data.addTipShown = true;
             Save.save();
@@ -1225,7 +1225,7 @@ export class GameRoot extends Component {
         // 抖音：分享本局录屏（按平台规则不发奖励）
         this.recBtn = mkButton(s, '分享本局录屏', 300, 72, () => {
             const b = this.battle;
-            Recorder.share(b.won ? '我的奶娃活过了 15 分钟！' : `我的奶娃坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物`, ok => { if (!ok) this.showToast('分享未完成'); });
+            Recorder.share(b.won ? '我的刀盾活过了 15 分钟！' : `我的刀盾坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物`, ok => { if (!ok) this.showToast('分享未完成'); });
         }, new Color(200, 40, 90, 255), 26);
         this.recBtn.node.setPosition(0, by + 186);
         this.refreshers.push(() => {
@@ -1301,13 +1301,13 @@ export class GameRoot extends Component {
         const e = 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2);
         const sc = Math.max(0.01, e) * (1 + Math.sin(this.t * 2) * 0.01);
         this.splashLogo.setScale(sc, sc, 1);
-        // 奶娃一蹦一蹦
+        // 刀盾一蹦一蹦
         const hop = Math.abs(Math.sin(t * 4.5)) * 26;
         this.splashHero.node.setPosition(0, this.splashHeroBaseY + hop);
         this.splashHero.spriteFrame = Art.f(this.selectedChar().sprite + (hop > 8 ? '_2' : '_1'));
         const p = Math.min(1, t / 2.3);
         this.splashFill.setScale(p, 1, 1);
-        this.splashLoad.string = `正在召唤奶娃… ${Math.floor(p * 100)}%`;
+        this.splashLoad.string = `正在召唤刀盾… ${Math.floor(p * 100)}%`;
     }
 
     private afterSplash() {
@@ -2065,7 +2065,7 @@ export class GameRoot extends Component {
         this.refreshers.push(() => {
             tabs.forEach(([k], i) => tabBtns[i].node.setScale(this.rankKind === k ? 1.06 : 0.94, this.rankKind === k ? 1.06 : 0.94, 1));
         });
-        mkLabel(s, '只显示同样在玩《奶娃割草》的微信好友', 20, C_GREY, 'center', 2).node.setPosition(0, this.bottom + 136 - 24);
+        mkLabel(s, '只显示同样在玩《我的刀盾》的微信好友', 20, C_GREY, 'center', 2).node.setPosition(0, this.bottom + 136 - 24);
         mkButton(s, '返回', 300, 88, () => this.setState(this.rankBack), C_BTN_GREY).node.setPosition(0, this.bottom + 60);
     }
 

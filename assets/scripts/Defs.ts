@@ -682,7 +682,7 @@ export const CHARGE_DESC: Record<UltCharge, string> = {
 };
 
 export const CHARACTERS: CharDef[] = [
-    { id: 'hunter', name: '奶娃·菜', title: '刀盾手', sprite: 'hero_hunter', weapon: 'whip', desc: '最大生命 +20', bonus: { maxHp: 20 }, cost: 0, traitName: '越战越勇', trait: '每击败 100 个敌人伤害 +1%（最多 +25%）', ultName: '鞭影风暴', ult: '2.5 秒内疯狂挥鞭，持续横扫身边的敌人', charge: 'combo' },
+    { id: 'hunter', name: '我的刀盾', title: '刀盾守护者', sprite: 'hero_hunter', weapon: 'whip', desc: '最大生命 +20', bonus: { maxHp: 20 }, cost: 0, traitName: '越战越勇', trait: '每击败 100 个敌人伤害 +1%（最多 +25%）', ultName: '刀盾风暴', ult: '2.5 秒内双刀旋转横扫，锅盖弹反周围子弹', charge: 'combo' },
     { id: 'mage', name: '奶龙', title: '吐息法师', sprite: 'hero_mage', weapon: 'wand', desc: '经验获取 +10%', bonus: { growth: 0.1 }, cost: 0, traitName: '奥术涌流', trait: '每次升级后 4 秒内冷却 -30%', ultName: '奶龙咆哮', ult: '奶龙吐出 30 颗追踪火球，每颗爆炸伤害周围敌人', charge: 'level' },
     { id: 'rogue', name: '外卖侠', title: '快递刺客', sprite: 'hero_rogue', weapon: 'knife', desc: '移动速度 +15%', bonus: { moveSpeed: 0.15 }, cost: 500, traitName: '灵巧闪避', trait: '受到攻击时 12% 几率完全闪避', ultName: '影袭外卖', ult: '无敌冲刺穿过敌群，终点爆发一圈飞刀', charge: 'move' },
     { id: 'knight', name: '铁桶哥', title: '铁桶武士', sprite: 'hero_knight', weapon: 'axe', desc: '护甲 +1，伤害 +10%', bonus: { armor: 1, might: 0.1 }, cost: 1000, traitName: '不屈铁壁', trait: '生命低于 50% 时护甲额外 +2', ultName: '铁桶盾墙', ult: '3 秒无敌，每 0.5 秒震出冲击波', charge: 'hurt' },
@@ -808,7 +808,7 @@ export const DAILY_MODS: DailyMod[] = [
     { id: 'elites', name: '精英横行', desc: '每 12 秒出现一只精英怪' },
     { id: 'gold3', name: '金币狂欢', desc: '金币 ×3，但不会掉落烤鸡' },
     { id: 'horde', name: '无尽怪潮', desc: '怪物数量 +40%' },
-    { id: 'glass', name: '易碎奶娃', desc: '受到伤害 ×1.5，造成伤害 +40%' },
+    { id: 'glass', name: '易碎刀盾', desc: '受到伤害 ×1.5，造成伤害 +40%' },
 ];
 export const DAILY_GOAL = 600;    // 存活 10 分钟
 export const DAILY_REWARD = 400;  // 每日首次成功奖励
@@ -847,9 +847,9 @@ export const PICKUP_INFO: Record<string, { name: string; desc: string }> = {
     clover: { name: '四叶草', desc: '15 秒内暴击率 +30%，击败敌人掉落更多金币。' },
     firering: { name: '烈焰之环', desc: '10 秒内身边环绕火焰，持续灼烧靠近的敌人。' },
     scroll: { name: '智慧卷轴', desc: '立刻提升 1 级。' },
-    giant: { name: '巨人蘑菇', desc: '10 秒内变成巨型奶娃：碾压撞到的敌人，受到伤害减半。' },
+    giant: { name: '巨人蘑菇', desc: '10 秒内变成巨型刀盾：碾压撞到的敌人，受到伤害减半。' },
     dice: { name: '命运骰子', desc: '掷出随机结果：神兵、升级、清屏、回满生命……也可能招来精英怪！' },
-    decoy: { name: '幻影娃', desc: '放出一只诱饵奶娃吸引怪物 8 秒，最后轰然爆炸。' },
+    decoy: { name: '幻影娃', desc: '放出一只诱饵刀盾吸引怪物 8 秒，最后轰然爆炸。' },
     boots: { name: '疾风靴', desc: '10 秒内移速 +60%，脚下留下燃烧的足迹。' },
     bank: { name: '聚宝盆', desc: '6 秒内身边不断涌出金币。' },
     battery: { name: '能量电池', desc: '大招立刻充满。' },

@@ -1,4 +1,4 @@
-// 奶娃割草 · 开放数据域：好友排行榜
+// 我的刀盾 · 开放数据域：好友排行榜
 // 主域通过 postMessage({ type: 'rank', kind: 'best' | 'daily', date: 'YYYYMMDD', scale }) 通知绘制，
 // 在共享画布上绘制后由主域的 SubContextView 显示。只读取好友数据，不向主域回传任何信息（平台规定）
 // 构建后由 tools/wechat-postbuild.mjs 在 game.json 中登记 "openDataContext": "openDataContext"

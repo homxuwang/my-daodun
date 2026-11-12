@@ -5,7 +5,7 @@
 结构（后续实现）：
 - game.js        入口：加载引擎 + 启动
 - game.json      deviceOrientation=portrait、openDataContext
-- project.config.json  appid、projectname=奶娃割草
+- project.config.json  appid、projectname=我的刀盾
 - openDataContext/     好友排行（共享画布）
 - 适配：wx.getSystemInfoSync 安全区/胶囊、激励视频/插屏、分享、vibrate
 

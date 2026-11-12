@@ -26,4 +26,4 @@ http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
         res.end(data);
     });
-}).listen(port, () => console.log(`奶娃割草 → http://localhost:${port}/web/`));
+}).listen(port, () => console.log(`我的刀盾 → http://localhost:${port}/web/`));

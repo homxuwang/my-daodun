@@ -118,7 +118,8 @@ const OUT = 0x1a1020;
 // ---------------------------------------------------------------- 角色
 // 角色列表（与 Defs.ts 中 CHARACTERS 的 sprite 对应：hero_<kind>_<帧>）
 export const HERO_KINDS = ['hunter', 'mage', 'rogue', 'knight', 'nun', 'pyro', 'bomber', 'sage']; // 福娃（hero_fu）由奶娃加装扮生成
-// ---------------------------------------------------------------- 奶娃（主角）
+// ---------------------------------------------------------------- 我的刀盾（主角）
+// 我的刀盾：头顶「菜」字，右手菜刀，左手锅盖
 // 角色像素图由 tools/import-heroes.py 从参考图导入（HeroArt.ts），这里解码并生成走路帧
 function decodeHero(a) {
     const c = new PixelCanvas(a.w, a.h);
