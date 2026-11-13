@@ -93,7 +93,7 @@ function boot() {
         requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
-    console.log('[web] 我的刀盾 已启动');
+    console.log('[web] 刀盾闯关 已启动');
 }
 
 if (typeof document !== 'undefined') {

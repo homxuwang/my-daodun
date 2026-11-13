@@ -64,7 +64,7 @@ export class Recorder {
             tt.shareAppMessage({
                 channel: 'video',
                 title,
-                extra: { videoPath: this.videoPath, videoTopics: ['我的刀盾', '小游戏'], hashtag_list: ['我的刀盾', '小游戏'] },
+                extra: { videoPath: this.videoPath, videoTopics: ['刀盾闯关', '小游戏'], hashtag_list: ['刀盾闯关', '小游戏'] },
                 success: () => cb(true),
                 fail: () => cb(false),
             });

@@ -1,4 +1,4 @@
-# 我的刀盾 · My Knife & Shield
+# 刀盾闯关
 
 以「我的刀盾」为主角、集合奶蛙与 meme 元素的竖屏割草幸存者小游戏。
 参考 [milky-frog（奶蛙割草）](https://github.com/ychisbest/milky-frog) 的架构与数值，

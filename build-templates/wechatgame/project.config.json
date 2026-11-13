@@ -12,7 +12,7 @@
     "compileType": "game",
     "libVersion": "widelyUsed",
     "appid": "",
-    "projectname": "我的刀盾",
+    "projectname": "刀盾闯关",
     "condition": {
         "search": {
             "current": -1,

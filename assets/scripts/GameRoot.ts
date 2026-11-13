@@ -24,7 +24,7 @@ export const DESIGN_W = 720;
 export const DESIGN_H = 1280;
 
 // 游戏名与适龄提示（上架前与微信后台填写的保持一致）
-export const GAME_NAME = '我的刀盾';
+export const GAME_NAME = '刀盾闯关';
 export const GAME_SUBTITLE = 'MY KNIFE & SHIELD';
 export const AGE_RATING = '12+';
 export const GAME_VERSION = 'v1.0.0';
@@ -251,7 +251,7 @@ export class GameRoot extends Component {
             if (cv && cv.toTempFilePathSync) imageUrl = cv.toTempFilePathSync({ x: 0, y: 0, width: cv.width, height: Math.round(cv.width * 0.8), destWidth: 500, destHeight: 400 });
         } catch (e) { /* 截图失败则使用默认分享图 */ }
         const daily = this.dailyRun ? Social.dateKey() : '';
-        const title = daily ? `今天的每日挑战我坚持了 ${this.fmtTime(b.time)}，同一关卡，敢来比比吗？` : b.won ? `我的刀盾在《${GAME_NAME}》里击败了梗王！你也来试试？` : `我的刀盾坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
+        const title = daily ? `${GAME_NAME}：今天的每日挑战我坚持了 ${this.fmtTime(b.time)}，同一关卡，敢来比比吗？` : b.won ? `我的刀盾在《${GAME_NAME}》里击败了梗王！你也来试试？` : `${GAME_NAME}：坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物，你能撑多久？`;
         // 卡片携带战绩：好友点开后显示挑战横幅（不发放任何奖励）
         const query = Social.shareQuery({ time: b.time, kills: b.kills, won: b.won ? 1 : 0, daily });
         Analytics.track('share', { from: daily ? 'daily' : 'result', won: b.won ? 1 : 0 });
@@ -828,7 +828,7 @@ export class GameRoot extends Component {
             chal.node.active = !!c && this.state === 'menu';
             if (!c) return;
             const daily = Social.challengeIsToday(c);
-            chalText.string = `好友在${daily ? '今天的每日挑战' : '我的刀盾'}中坚持了 ${this.fmtTime(c.time)}\n击败 ${c.kills} 只怪物${c.won ? '，成功通关' : ''}\n你能超过吗？` + (c.daily && !daily ? '（那天的每日挑战已结束，改为普通局）' : '');
+            chalText.string = `好友在${daily ? '今天的每日挑战' : GAME_NAME}中坚持了 ${this.fmtTime(c.time)}\n击败 ${c.kills} 只怪物${c.won ? '，成功通关' : ''}\n你能超过吗？` + (c.daily && !daily ? '（那天的每日挑战已结束，改为普通局）' : '');
         });
 
         // 首胜后提示一次「添加到我的小程序」（指向右上角胶囊）
@@ -1226,7 +1226,7 @@ export class GameRoot extends Component {
         // 抖音：分享本局录屏（按平台规则不发奖励）
         this.recBtn = mkButton(s, '分享本局录屏', 300, 72, () => {
             const b = this.battle;
-            Recorder.share(b.won ? '我的刀盾活过了 15 分钟！' : `我的刀盾坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物`, ok => { if (!ok) this.showToast('分享未完成'); });
+            Recorder.share(b.won ? `${GAME_NAME}：活过了 15 分钟！` : `${GAME_NAME}：坚持了 ${this.fmtTime(b.time)}，割倒 ${b.kills} 只怪物`, ok => { if (!ok) this.showToast('分享未完成'); });
         }, new Color(200, 40, 90, 255), 26);
         this.recBtn.node.setPosition(0, by + 186);
         this.refreshers.push(() => {
@@ -2066,7 +2066,7 @@ export class GameRoot extends Component {
         this.refreshers.push(() => {
             tabs.forEach(([k], i) => tabBtns[i].node.setScale(this.rankKind === k ? 1.06 : 0.94, this.rankKind === k ? 1.06 : 0.94, 1));
         });
-        mkLabel(s, '只显示同样在玩《我的刀盾》的微信好友', 20, C_GREY, 'center', 2).node.setPosition(0, this.bottom + 136 - 24);
+        mkLabel(s, `只显示同样在玩《${GAME_NAME}》的微信好友`, 20, C_GREY, 'center', 2).node.setPosition(0, this.bottom + 136 - 24);
         mkButton(s, '返回', 300, 88, () => this.setState(this.rankBack), C_BTN_GREY).node.setPosition(0, this.bottom + 60);
     }
 

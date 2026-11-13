@@ -1,6 +1,6 @@
 > 微信正式发布状态（2026-11-12）：**受阻，尚未完成真实微信构建与真机验收**。此前“完成”仅能说明浏览器交付；最新证据和发布前步骤见 [微信上线验收报告](docs/wechat-release-readiness.md)。
 
-# 我的刀盾 - 交付总结
+# 刀盾闯关 - 交付总结
 
 ## 项目状态：✅ 已完成
 
@@ -262,7 +262,7 @@ f048a46 (本次修复) fix: 触摸派发修复 - EventTouch 实例复用 + overl
 
 ## 联系与协议
 
-- **项目名称**：我的刀盾（MY KNIFE & SHIELD）
+- **项目名称**：刀盾闯关
 - **参考来源**：https://github.com/ychisbest/milky-frog（已完全重命名，无直接复制）
 - **技术支持**：Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 - **许可证**：未指定（建议根据商用需求添加 LICENSE）
