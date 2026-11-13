@@ -32,6 +32,7 @@ export class Enemy {
     alive = false;
     hits = new Map<string, number>();
     ai: BossAI | null = null;
+    memeFearUntil = 0;
     frozen = 0;     // 冻结剩余时间
     shootT = 0;     // 远程怪射击计时
     elite = false;  // 精英怪
@@ -398,11 +399,24 @@ export class Battle {
     hasteT = 0;      // 急速沙漏：冷却 -40%
     cloverT = 0;     // 四叶草：暴击率 +30%、金币掉率提高
     fireT = 0;       // 烈焰之环：身边持续灼烧
-    arcaneT = 0;     // 法师天赋：升级后冷却 -30%
     private fireTick = 0;
     private fireFx: Sprite | null = null;
+    private memeMoveT = 0;
+    private memeSpeedT = 0;
+    private memeHappyT = 0;
+    private memeShieldT = 0;
+    private memeShieldHp = 0;
+    private memeZones: { x: number; y: number; r: number; life: number; tick: number; slow: number; sp: Sprite }[] = [];
+    get characterBuffs(): string[] {
+        const buffs: string[] = [];
+        if (this.isChar('rogue') && this.memeMoveT >= 3) buffs.push('猫猫疾走');
+        if (this.memeSpeedT > 0) buffs.push(`扑击加速 ${Math.ceil(this.memeSpeedT)}s`);
+        if (this.memeHappyT > 0) buffs.push(`开心欢呼 ${Math.ceil(this.memeHappyT)}s`);
+        if (this.memeShieldT > 0 && this.memeShieldHp > 0) buffs.push(`委屈护盾 ${Math.ceil(this.memeShieldT)}s`);
+        return buffs;
+    }
     private traitT = 0; // 角色天赋的周期计时
-    private refractBuf: Enemy[] = []; // 折射在 hurtEnemy 内调用，不能复用 qbuf
+    private refractBuf: Enemy[] = []; // 密集区域查询缓冲，不复用伤害查询 qbuf
     private ghostT = 0;
     private riftT = 0;
     private overloadT = 0;  // 超载：倒计时 / 剩余时间
@@ -434,7 +448,6 @@ export class Battle {
     private ultReadyShown = false;
     private invulnT = 0;  // 不动铁壁 / 影袭：无敌
     private dashT = 0;    // 影袭冲刺
-    private sanctum: { x: number; y: number; sp: Sprite } | null = null; // 圣域
     private tasks: { t: number; fn: () => void }[] = []; // 延时执行（大招 / 神兵的分段效果）
     // 神兵（30 秒史诗武器）
     epic: EpicDef | null = null;
@@ -577,13 +590,15 @@ export class Battle {
         this.blessings = [];
         this.pendingBlessings = 1; // 开局选择一张命运卡牌
         this.potionT = this.shieldHits = this.ghostT = 0;
-        this.hasteT = this.cloverT = this.fireT = this.arcaneT = this.fireTick = 0;
+        this.hasteT = this.cloverT = this.fireT = this.fireTick = 0;
         if (this.fireFx) { this.fireFx.node.destroy(); this.fireFx = null; }
         this.ult = this.ultBank = 0;
         this.ultCasts = this.ultT = this.ultTick = this.invulnT = this.dashT = 0;
         this.ultReadyShown = false;
-        if (this.sanctum) { this.sanctum.sp.node.destroy(); this.sanctum = null; }
         this.tasks = [];
+        this.memeMoveT = this.memeSpeedT = this.memeHappyT = this.memeShieldT = this.memeShieldHp = 0;
+        for (const z of this.memeZones) z.sp.node.destroy();
+        this.memeZones = [];
         this.endEpic();
         this.epicsUsed = 0;
         for (const h of this.holes) { h.sp.node.active = false; this.holePool.push(h.sp); }
@@ -640,7 +655,7 @@ export class Battle {
         if (this.garlicAura) { this.garlicAura.node.destroy(); this.garlicAura = null; }
 
         this.char = char;
-        this.traitT = char.id === 'nun' ? 10 : char.id === 'santa' ? 40 : 4;
+        this.traitT = ({ hunter: 1, mage: 6, knight: 12, bomber: 10, sage: 5, druid: 4, prism: 8, santa: 30 } as Record<string, number>)[char.id] || 0;
         this.px = this.py = 0;
         this.time = 0;
         this.kills = 0;
@@ -701,6 +716,7 @@ export class Battle {
     // ------------------------------------------------------------------ 主循环
 
     tick(dt: number) {
+        if (this.dead || this.won) return;
         // 顿帧：短暂冻结战斗，只让特效继续播放
         if (this.hitstop > 0) {
             this.hitstop -= dt;
@@ -718,6 +734,7 @@ export class Battle {
         this.updateSpawner(dt);
         this.grid.clear();
         for (const e of this.enemies) this.grid.insert(e);
+        this.updateMemeZones(dt);
         this.updateEnemies(dt);
         this.updateWeapons(dt);
         this.updateProjs(dt);
@@ -847,6 +864,11 @@ export class Battle {
         }
         this.hp = 0;
         this.dead = true;
+        this.ultT = this.dashT = this.invulnT = this.memeSpeedT = this.memeHappyT = this.memeShieldT = this.memeShieldHp = this.memeMoveT = 0;
+        for (const z of this.memeZones) z.sp.node.destroy();
+        this.memeZones = [];
+        this.tasks = [];
+        this.playerBody.setPosition(0, 0);
     }
 
     // 复活：恢复生命，冲击波击退并伤害附近敌人（商店「复活」与看广告复活共用）
@@ -871,13 +893,19 @@ export class Battle {
         let mx = this.mx, my = this.my;
         const len = Math.hypot(mx, my);
         const moving = this.moving = len > 0.05;
+        this.memeMoveT = moving ? this.memeMoveT + dt : 0;
+        this.memeSpeedT = Math.max(0, this.memeSpeedT - dt);
+        this.memeHappyT = Math.max(0, this.memeHappyT - dt);
+        this.memeShieldT = Math.max(0, this.memeShieldT - dt);
+        if (!this.memeShieldT) this.memeShieldHp = 0;
         if (moving) {
             if (len > 1) { mx /= len; my /= len; }
             const sp = 145 * this.stats.moveSpeed * (this.slowT > 0 ? 0.55 : 1) * (this.potionT > 0 ? 1.3 : 1) * (this.ghostT > 0 ? 1.5 : 1)
-                * (this.bootsT > 0 ? 1.6 : 1) * (this.epicIs('unicorn') ? 1.6 : 1);
+                * (this.bootsT > 0 ? 1.6 : 1) * (this.epicIs('unicorn') ? 1.6 : 1)
+                * (this.isChar('rogue') ? (this.memeMoveT >= 3 ? 1.2 : 1) * (this.memeSpeedT > 0 ? 1.3 : 1) : 1);
             this.px += mx * sp * dt;
             this.py += my * sp * dt;
-            if (this.char.charge === 'move') this.chargeUlt(sp * dt / 2600);
+            if (this.char.charge === 'move') this.chargeUlt(dt / 40);
             const l = Math.hypot(mx, my);
             this.dirX = mx / l;
             this.dirY = my / l;
@@ -889,16 +917,12 @@ export class Battle {
         } else this.animF = 0;
         // 影袭：沿移动方向高速冲刺
         if (this.dashT > 0) {
-            this.dashT -= dt;
-            this.px += this.dirX * 1300 * dt;
-            this.py += this.dirY * 1300 * dt;
-            for (const e of this.grid.query(this.px, this.py, 70, this.qbuf).slice()) {
-                if (!e.alive || e.def.prop || Math.hypot(e.x - this.px, e.y - this.py) > 50 + e.def.radius) continue;
-                if (this.time < (e.hits.get('dash') || 0)) continue;
-                e.hits.set('dash', this.time + 1);
-                this.hurtEnemy(e, this.skillDmg(30, 5), 300, this.px, this.py, null);
-            }
-            if (Math.random() < 0.8) this.burst(this.px, this.py, 0x8060c0, 2, 80);
+            const dashStep = Math.min(dt, this.dashT);
+            this.dashT = Math.max(0, this.dashT - dashStep);
+            if (this.dashT < 1e-8) this.dashT = 0;
+            this.px += Math.cos(this.memeClawAim) * 1300 * dashStep;
+            this.py += Math.sin(this.memeClawAim) * 1300 * dashStep;
+            this.burst(this.px, this.py, 0xffcf91, 2, 80);
             if (this.dashT <= 0) this.rogueFinale();
         }
         this.playerSp.spriteFrame = Art.f(this.char.sprite + '_' + this.animF);
@@ -913,19 +937,12 @@ export class Battle {
         this.playerSp.color = this.iframe > 0 && Math.floor(this.iframe * 20) % 2 === 0 ? C_HURT
             : this.invulnT > 0 ? C_GOLDEN
             : this.epicIs('unicorn') ? this.rainbow(this.time * 2) : C_WHITE;
-        if (this.char.charge === 'heal' && this.hp < this.stats.maxHp) this.chargeUlt(this.stats.recovery * dt / (this.stats.maxHp * 0.8));
-        this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.recovery * dt);
+        this.heal(this.stats.recovery * dt);
         this.hpFill.setScale(Math.max(0, this.hp / this.stats.maxHp), 1, 1);
     }
 
     hurtPlayer(dmg: number) {
         if (this.iframe > 0 || this.invulnT > 0 || this.dashT > 0) return;
-        // 游侠蛙：灵巧闪避
-        if (this.isChar('rogue') && Math.random() < 0.12) {
-            this.iframe = 0.4;
-            this.burst(this.px, this.py, 0xc0ffc0, 8, 220);
-            return;
-        }
         // 羽毛披风：闪避
         if (this.stats.dodge > 0 && Math.random() < this.stats.dodge) {
             this.iframe = 0.4;
@@ -936,7 +953,14 @@ export class Battle {
         if (this.shieldHits > 0) {
             this.shieldHits--;
             this.iframe = 0.6;
-            if (this.char.charge === 'heal') this.chargeUlt(0.08);
+            // 刀盾格挡成功：盾击震退周围敌人
+            if (this.isChar('hunter')) {
+                for (const e of this.grid.query(this.px, this.py, 130, this.qbuf).slice()) {
+                    if (e.alive && !e.def.prop && Math.hypot(e.x - this.px, e.y - this.py) < 100 + e.def.radius) this.hurtEnemy(e, 15 + this.level * 2, 420, this.px, this.py, null);
+                }
+                this.burst(this.px, this.py, 0xf5c542, 16, 300);
+                Sound.play('slam');
+            }
             this.burst(this.px, this.py, 0x60a0ff, 12, 260);
             Sound.play('hit');
             return;
@@ -950,13 +974,18 @@ export class Battle {
         if (this.hasB('ghost')) { this.ghostT = 1.5; this.iframe = Math.max(this.iframe, 1.5); }
         // 荆棘光环：受伤时对周围敌人造成大量伤害
         if (this.hasB('thornaura')) this.explodeFriendly(this.px, this.py, 130, 40 + this.level * 3, null, 260, 0xa0d060);
-        // 爆破蛙：受伤时引爆周围
-        if (this.isChar('bomber') && Math.random() < 0.35) this.explodeFriendly(this.px, this.py, 110, 20 + this.level * 2, null, 260, 0xff8030);
-        const armor = this.stats.armor + (this.isChar('knight') && this.hp < this.stats.maxHp * 0.5 ? 2 : 0);
+        const armor = this.stats.armor;
         const calm = this.hp > this.stats.maxHp * 0.7 ? 1 - this.stats.calm : 1; // 苔藓护甲
-        const d = Math.max(1, dmg * (this.mod('glass') ? 1.5 : 1) * (this.giantT > 0 ? 0.5 : 1) * calm - armor);
+        let d = Math.max(1, dmg * (this.mod('glass') ? 1.5 : 1) * (this.giantT > 0 ? 0.5 : 1) * calm - armor);
+        const absorbed = Math.min(d, this.memeShieldHp);
+        this.memeShieldHp -= absorbed;
+        d -= absorbed;
+        if (d <= 0) return;
+        const actual = Math.min(this.hp, d);
         this.hp -= d;
-        if (this.char.charge === 'hurt') this.chargeUlt(0.12);
+        this.memeMoveT = 0;
+        if (this.isChar('nun')) this.memeZone(this.px, this.py, 110, 3, 0.3, 0x70cfff);
+        if (this.char.charge === 'hurt') this.chargeUlt(actual / this.stats.maxHp);
         this.iframe = Math.max(this.iframe, 0.6);
         this.sinceHurt = 0;
         this.addShake(0.2, 7);
@@ -965,8 +994,8 @@ export class Battle {
     }
 
     private heal(v: number) {
-        if (this.hp >= this.stats.maxHp) return;
-        if (this.char.charge === 'heal') this.chargeUlt(Math.min(v, this.stats.maxHp - this.hp) / (this.stats.maxHp * 0.8));
+        if (this.hp >= this.stats.maxHp || this.hp <= 0 || v <= 0) return;
+        if (this.char.charge === 'heal') this.chargeUlt(Math.min(v, this.stats.maxHp - this.hp) / this.stats.maxHp);
         this.hp = Math.min(this.stats.maxHp, this.hp + v);
     }
 
@@ -1253,7 +1282,7 @@ export class Battle {
         e.alive = true;
         e.hits.clear();
         e.ai = null;
-        e.frozen = 0;
+        e.frozen = e.memeFearUntil = 0;
         e.shootT = 1.5 + Math.random() * 2;
         e.life = 0;
         e.elite = false;
@@ -1302,6 +1331,7 @@ export class Battle {
             const e = this.enemies[i];
             if (!e.alive) continue;
             const def = e.def;
+            const beforeX = e.x, beforeY = e.y;
             let dx = px - e.x, dy = py - e.y;
             let d = Math.hypot(dx, dy) || 1;
             e.life += dt;
@@ -1451,6 +1481,10 @@ export class Battle {
                     e.y += oy * push;
                 }
             }
+            const slow = this.memeSlow(e);
+            const fear = !def.boss && e.memeFearUntil > this.time;
+            e.x = beforeX + (e.x - beforeX) * (1 - slow) * (fear ? -1 : 1);
+            e.y = beforeY + (e.y - beforeY) * (1 - slow) * (fear ? -1 : 1);
             dx = px - e.x; dy = py - e.y;
             d = Math.hypot(dx, dy);
             // 巨人蘑菇 / 彩虹独角兽：撞到的敌人被碾压击飞
@@ -1541,51 +1575,191 @@ export class Battle {
 
     // 角色专属天赋中按周期触发的部分
     private updateTrait(dt: number) {
-        const id = this.char.id;
-        if (id !== 'nun' && id !== 'sage' && id !== 'druid' && id !== 'santa') return;
+        if (this.isChar('druid') && this.hp < this.stats.maxHp * 0.5) this.traitT = Math.min(2, this.traitT);
         this.traitT -= dt;
         if (this.traitT > 0) return;
-        if (id === 'nun') {
-            // 圣光庇护：每 40 秒 1 层护盾（不叠加）
-            this.traitT = 40;
-            if (this.shieldHits < 1) {
-                this.shieldHits = 1;
-                this.burst(this.px, this.py, 0x80c0ff, 14, 200);
-                Sound.play('power');
+        switch (this.char.id) {
+            case 'hunter':
+                this.traitT = 12;
+                if (this.shieldHits < 1) { this.shieldHits = 1; this.burst(this.px, this.py, 0xf5c542, 10, 180); }
+                break;
+            case 'mage': this.traitT = 6; this.memeCone(2, 0xffa030, 220, Math.PI / 3); break;
+            case 'knight':
+                this.traitT = 12;
+                this.shieldHits = Math.max(1, this.shieldHits);
+                for (const b of this.bullets) if (b.alive && Math.hypot(b.x - this.px, b.y - this.py) <= 150) { b.alive = false; b.node.active = false; }
+                this.memePulse(150, 0, 0x9ae7ee);
+                break;
+            case 'bomber':
+                // Cooldown begins when the shield is actually granted.
+                if (this.hp < this.stats.maxHp * 0.4) {
+                    this.traitT = 10; this.memeShieldT = 2; this.memeShieldHp = this.stats.maxHp * 0.1;
+                    this.memePulse(60, 0, 0xa0c8ff);
+                }
+                break;
+            case 'sage': {
+                this.traitT = 5;
+                const a = this.memeAim();
+                this.beamHit(this.px, this.py, a, 480, 22, this.memeDamage(2), 0xffa8c8, 0);
+                Sound.play('sonic');
+                break;
             }
-        } else if (id === 'sage') {
-            // 天雷：3 道落雷
-            this.traitT = 7;
-            let hit = false;
-            for (let i = 0; i < 3; i++) {
-                const t = this.randomOnScreen();
-                if (!t) break;
-                hit = true;
-                const f = this.spawnFx('lightning', t.x, t.y, 0.25, PX, 0);
-                f.node.getComponent(UITransform)!.setAnchorPoint(0.5, 0);
-                f.sp.color = colorOf(0xd0b0ff);
-                const x = t.x, y = t.y;
-                this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 40, 12 + this.level * 2, null, 60, 0xc0a0ff, false));
-            }
-            if (hit) Sound.play('lightning');
-        } else if (id === 'druid') {
-            // 藤蔓缠绕：定住半径 130 内的敌人
-            this.traitT = 9;
-            for (const e of this.grid.query(this.px, this.py, 160, this.qbuf).slice()) {
-                if (Math.hypot(e.x - this.px, e.y - this.py) < 130 + e.def.radius) this.freezeEnemy(e, 1.5);
-            }
-            const f = this.spawnFx('aura', this.px, this.py, 0.45, 260 / 64 * 0.5, 1.3);
-            f.sp.color = colorOf(0x60c050);
-            this.burst(this.px, this.py, 0x60c050, 16, 300);
-        } else if (id === 'santa') {
-            // 圣诞礼物：身边掉落随机增益道具
-            this.traitT = 70;
-            const a = Math.random() * Math.PI * 2;
-            const kind = Math.random() < 0.2 ? 'magnet' : BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)];
-            this.spawnPickup(kind, this.px + Math.cos(a) * 70, this.py + Math.sin(a) * 70, 0, true);
-            this.onBanner('圣诞礼物!', new Color(255, 120, 120, 255));
-            Sound.play('chest');
+            case 'druid': this.traitT = this.hp < this.stats.maxHp * 0.5 ? 2 : 4; this.memeCone(3, 0xffdfc0, 160, Math.PI / 2); break;
+            case 'prism': this.traitT = 8; this.memeZone(this.px, this.py, 120, 4, 0.25, 0x69bca9); break;
+            case 'santa':
+                this.traitT = 30;
+                this.spawnPickup(BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)], this.px + 60, this.py, 0, true);
+                this.burst(this.px, this.py, 0xff6060, 16, 220);
+                Sound.play('chest');
+                break;
         }
+    }
+
+    // Meme skills use a ten-point base attack scaled by current damage modifiers.
+    private memeDamage(mult: number) { return 10 * mult * this.stats.might * this.dmgMul(); }
+
+    private memeAim() {
+        let nearest: Enemy | null = null, best = Infinity;
+        for (const e of this.enemies) {
+            if (!e.alive || e.def.prop) continue;
+            const d = Math.hypot(e.x - this.px, e.y - this.py);
+            if (d < best) { nearest = e; best = d; }
+        }
+        return nearest ? Math.atan2(nearest.y - this.py, nearest.x - this.px) : Math.atan2(this.dirY, this.dirX);
+    }
+
+    private memePulse(r: number, mult: number, tint: number, knock = 0, x = this.px, y = this.py) {
+        const f = this.spawnFx('aura', x, y, 0.4, r / 32, 0.5);
+        f.sp.color = colorOf(tint);
+        if (mult <= 0) return;
+        for (const e of this.enemies.slice()) {
+            if (!e.alive || e.def.prop || Math.hypot(e.x - x, e.y - y) > r + e.def.radius) continue;
+            this.hurtEnemy(e, this.memeDamage(mult), e.def.boss ? 0 : knock, x, y, null);
+        }
+    }
+
+    private memeCone(mult: number, tint: number, r: number, width: number, aim = this.memeAim()) {
+        for (const e of this.enemies.slice()) {
+            if (!e.alive || e.def.prop) continue;
+            const dx = e.x - this.px, dy = e.y - this.py;
+            const a = Math.atan2(dy, dx) - aim;
+            if (Math.hypot(dx, dy) <= r + e.def.radius && Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) <= width / 2)
+                this.hurtEnemy(e, this.memeDamage(mult), 0, this.px, this.py, null);
+        }
+        for (let i = -2; i <= 2; i++) {
+            const a = aim + width * i / 4;
+            this.lineFx(this.px, this.py, this.px + Math.cos(a) * r, this.py + Math.sin(a) * r, tint, 8);
+        }
+        Sound.play(this.isChar('mage') ? 'fire' : 'knife');
+    }
+
+    private memeZone(x: number, y: number, r: number, life: number, slow: number, tint: number) {
+        const sp = mkSprite(this.zoneLayer, 'aura', r / 32);
+        sp.node.setPosition(x, y);
+        sp.color = colorOf(tint); sp.color = new Color(sp.color.r, sp.color.g, sp.color.b, 120);
+        this.memeZones.push({ x, y, r, life, tick: 1, slow, sp });
+    }
+
+    private updateMemeZones(dt: number) {
+        for (const z of this.memeZones) {
+            const active = Math.min(dt, z.life);
+            z.life -= active; z.tick -= active;
+            while (z.tick <= 1e-8) { z.tick += 1; this.memePulse(z.r, 1, 0x79cddc, 0, z.x, z.y); }
+            z.sp.node.setScale(z.r / 32 * (1 + Math.sin(this.time * 3) * 0.03), z.r / 32, 1);
+            if (z.life <= 1e-8) z.sp.node.destroy();
+        }
+        this.memeZones = this.memeZones.filter(z => z.life > 1e-8);
+    }
+
+    private memeSlow(e: Enemy) {
+        let amount = 0;
+        for (const z of this.memeZones)
+            if (Math.hypot(e.x - z.x, e.y - z.y) <= z.r + e.def.radius) amount = Math.max(amount, z.slow);
+        if (this.isChar('knight') && this.ultT > 0 && Math.hypot(e.x - this.px, e.y - this.py) <= 180 + e.def.radius)
+            amount = Math.max(amount, 0.5);
+        return e.def.boss ? Math.min(0.2, amount) : amount;
+    }
+
+    private memeUltInterval() {
+        return ({ mage: 1, knight: 1, nun: 1, pyro: 0.4, bomber: 0.2, sage: 0.5, druid: 0.15, prism: 1, fu: 0.4, santa: 0.2 } as Record<string, number>)[this.char.id] || 1;
+    }
+
+    private castMemeUlt() {
+        const id = this.char.id;
+        if (id === 'rogue') {
+            const a = this.memeAim();
+            this.dirX = Math.cos(a); this.dirY = Math.sin(a); this.memeClawAim = a;
+            this.dashT = 0.2; this.invulnT = 0.25;
+            Sound.play('dash'); return;
+        }
+        if (id === 'bomber') {
+            this.ultT = 0.2;
+            this.memePulse(240, 8, 0x9bbcff);
+            for (const e of this.enemies) if (e.alive && !e.def.prop && !e.def.boss && Math.hypot(e.x - this.px, e.y - this.py) <= 240 + e.def.radius)
+                e.memeFearUntil = this.time + 3;
+            Sound.play('bigkill'); return;
+        }
+        this.ultT = ({ mage: 4, knight: 5, nun: 5, pyro: 2, sage: 3, druid: 0.75, prism: 4, fu: 2, santa: 1.6 } as Record<string, number>)[id] || 0;
+        this.ultTick = this.memeUltInterval();
+        this.memeVisualT = 0;
+        if (id === 'druid') {
+            const a = this.memeAim(); this.memeClawAim = a;
+            this.invulnT = this.ultT + 0.05;
+        }
+        if (id === 'fu') { this.gold += 10; this.dmgText(this.px, this.py + 40, 10, C_GOLD, '+'); }
+    }
+
+    private memeClawAim = 0;
+    private memeVisualT = 0;
+    private updateMemeUlt(dt: number) {
+        const active = Math.min(dt, this.ultT);
+        this.ultT = Math.max(0, this.ultT - active);
+        this.ultTick -= active;
+        this.memeVisualT -= active;
+        if (this.memeVisualT <= 0) {
+            this.memeVisualT = 0.1;
+            if (this.isChar('mage')) {
+                const aim = this.memeAim();
+                for (let i = -2; i <= 2; i++) {
+                    const a = aim + i * Math.PI / 8;
+                    this.lineFx(this.px, this.py, this.px + Math.cos(a) * 260, this.py + Math.sin(a) * 260, 0xffa030, 12);
+                }
+            } else if (this.isChar('knight')) {
+                const a = this.time * 4;
+                for (let i = 0; i < 5; i++) {
+                    const angle = a + i * TAU / 5;
+                    const f = this.spawnFx('aura', this.px + Math.cos(angle) * 130, this.py + Math.sin(angle) * 130, 0.25, 0.65, 0.2);
+                    f.sp.color = colorOf(0xa0ecff);
+                }
+            }
+        }
+        while (this.ultTick <= 1e-8) {
+            this.ultTick += this.memeUltInterval();
+            switch (this.char.id) {
+                case 'mage': this.memeCone(3, 0xff922b, 260, Math.PI / 2); break;
+                case 'knight': this.memePulse(180, 1, 0xa0ecff); Sound.play('power'); break;
+                case 'nun': this.memePulse(200, 2, 0x81cfff); this.heal(this.stats.maxHp * 0.03); break;
+                case 'pyro': this.memePulse(180, 2, 0xffd980, 250); Sound.play('slam'); break;
+                case 'sage': this.memePulse(260, 2, 0xffa8c8); Sound.play('sonic'); break;
+                case 'druid': this.memeCone(2, 0xffddbd, 220, Math.PI / 2, this.memeClawAim); break;
+                case 'prism': this.memePulse(230, 3, 0x60c7af, 300); Sound.play('power'); break;
+                case 'fu': {
+                    const t = this.randomOnScreen();
+                    this.memePulse(100, 3, 0xffda55, 0, t ? t.x : this.px, t ? t.y : this.py);
+                    Sound.play('coin'); break;
+                }
+                case 'santa': {
+                    const t = this.randomOnScreen();
+                    const x = t ? t.x : this.px + Math.cos(this.time * 5) * 120;
+                    const y = t ? t.y : this.py + Math.sin(this.time * 5) * 120;
+                    this.spawnFx('gift', x, y, 0.35, PX * 1.5, 0);
+                    this.memePulse(100, 3, 0xff6d8e, 0, x, y);
+                    Sound.play('chest'); break;
+                }
+            }
+        }
+        if (this.isChar('pyro')) this.playerBody.setPosition(0, this.ultT > 0 ? Math.abs(Math.sin(this.ultT * Math.PI / 0.4)) * 22 : 0);
+        if (this.ultT < 1e-8) this.ultT = 0;
     }
 
     // 全局伤害倍率：狂战士、狂暴药水
@@ -1593,7 +1767,6 @@ export class Battle {
         let m = 1;
         if (this.hasB('berserk')) m *= 1 + 0.8 * (1 - Math.max(0, this.hp) / this.stats.maxHp);
         if (this.potionT > 0) m *= 1.5;
-        if (this.isChar('hunter')) m *= 1 + Math.min(0.25, Math.floor(this.kills / 100) * 0.01);
         if (this.ultBuffT > 0) m *= 1.3;
         return m;
     }
@@ -1614,7 +1787,6 @@ export class Battle {
         if (crit) {
             dmg = Math.round(dmg * this.stats.critDmg);
             if (this.hasB('vampkiss')) this.heal(1);
-            if (this.isChar('prism') && Math.random() < 0.35) this.refract(e, dmg);
             if (this.char.charge === 'crit') this.chargeUlt(1 / (150 + this.time * 0.4));
         }
         // 先手符：对满血敌人增伤
@@ -1695,15 +1867,13 @@ export class Battle {
             const x = e.x, y = e.y;
             this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 55, 10 + this.level, null, 120, 0xff8030));
         }
-        if (this.isChar('pyro') && !e.def.boss && Math.random() < 0.12) {
-            const x = e.x, y = e.y;
-            this.chainBoomQueue.push(() => this.explodeFriendly(x, y, 50, 8 + this.level, null, 100, 0xff6020, false));
-        }
         this.kills++;
         this.attackKills++;
+        if (this.isChar('pyro') && this.kills % 20 === 0) { this.memeHappyT = 3; this.burst(this.px, this.py, 0xffd680, 16, 220); }
         if (this.trial) this.trial.got++;
         const ch = this.char.charge;
-        if (ch === 'kill' || ch === 'combo') this.chargeUlt((ch === 'combo' ? 1 + Math.min(1, this.combo / 300) : 1) / (170 + this.time * 0.8));
+        if (ch === 'kill') this.chargeUlt(1 / (this.isChar('druid') ? 80 : 100));
+        if (ch === 'combo') this.chargeUlt((1 + Math.min(1, this.combo / 300)) / (170 + this.time * 0.8));
         // 果冻怪：分裂成两只小果冻（放到帧末，避免遍历时修改怪物列表）
         if (e.def.split) {
             const x = e.x, y = e.y, t = e.def.split;
@@ -1832,25 +2002,11 @@ export class Battle {
         if (this.hasB('frenzy') && this.combo >= 50) m *= 0.7;
         if (this.overloadOn > 0) m *= 0.5;
         if (this.hasteT > 0) m *= 0.6;
-        if (this.arcaneT > 0) m *= 0.7;
+        if (this.memeHappyT > 0) m *= 0.8;
         return m;
     }
 
     isChar(id: string) { return this.char.id === id; }
-
-    // 折射（棱镜蛙）：暴击分出一道光打向附近另一个敌人
-    private refract(from: Enemy, dmg: number) {
-        let best: Enemy | null = null, bd = 160 * 160;
-        for (const e of this.grid.query(from.x, from.y, 160, this.refractBuf)) {
-            if (e === from || !e.alive || e.def.prop) continue;
-            const d = (e.x - from.x) ** 2 + (e.y - from.y) ** 2;
-            if (d < bd) { bd = d; best = e; }
-        }
-        if (!best) return;
-        const t = best;
-        this.spawnFx('spark', t.x, t.y, 0.2, PX, 1.5).sp.color = colorOf(0xc0f0ff);
-        this.chainBoomQueue.push(() => this.hurtEnemy(t, Math.max(1, Math.round(dmg * 0.5)), 0, from.x, from.y, null));
-    }
 
     private dmgOf(w: WeaponInst) {
         const base = w.stats.damage * this.stats.might * this.dmgMul();
@@ -1897,7 +2053,7 @@ export class Battle {
                         this.hurtEnemy(e, this.dmgOf(w), 320, this.px, this.py, w);
                     }
                 }
-                // 鞭影从奶娃手边向外甩出（锚点在靠近奶娃的一端）
+                // 刀光从刀盾狗边向外斩出（锚点在靠近主角的一端）
                 const f = this.spawnFx('whip', this.px + side * 8, cy + 6, 0.24, 1, 0);
                 f.node.getComponent(UITransform)!.setAnchorPoint(0, 0.5);
                 f.sx = side * (hw * 2 + 10) / 64;
@@ -2906,10 +3062,6 @@ export class Battle {
             this.cloverT -= dt;
             if (Math.random() < 0.2) this.burst(this.px, this.py + 10, 0x70e070, 1, 80);
         }
-        if (this.arcaneT > 0) {
-            this.arcaneT -= dt;
-            if (Math.random() < 0.3) this.burst(this.px, this.py, 0xb080ff, 1, 90);
-        }
         // 烈焰之环：每 0.3 秒灼烧半径 100 内的敌人
         if (this.fireT > 0) {
             this.fireT -= dt;
@@ -2962,12 +3114,17 @@ export class Battle {
     // 充能先存入 ultBank，由 updateUlt 匀速注入；instant = true 时立刻生效（能量电池）
     chargeUlt(v: number, instant = false) {
         if (this.dead || v <= 0) return;
+        if (!instant && !this.isChar('hunter')) {
+            if (!this.ultBusy) this.chargeUlt(v * this.ultRate(), true);
+            return;
+        }
         if (!instant) {
             if (!this.ultBusy) this.ultBank = Math.min(1, this.ultBank + v * this.ultRate());
             return;
         }
         const was = this.ult;
         this.ult = Math.min(1, this.ult + v);
+        if (this.ult > 1 - 1e-9) this.ult = 1;
         if (was < 1 && this.ult >= 1) {
             if (!this.ultReadyShown) {
                 this.ultReadyShown = true;
@@ -2984,6 +3141,8 @@ export class Battle {
     useUlt(): boolean {
         if (this.ult < 1 || this.dead || this.ultBusy) return false;
         this.ult = 0;
+        if (!this.isChar('hunter')) this.ultBank = 0;
+        this.ultReadyShown = false;
         this.ultCasts++;
         this.ultTick = 0;
         if (this.hasB('ultfan')) this.ultBuffT = 5;
@@ -3009,184 +3168,49 @@ export class Battle {
     }
 
     private castUlt() {
-        const px = this.px, py = this.py;
-        switch (this.char.id) {
-            case 'hunter':
-                this.ultT = 2.5;
-                break;
-            case 'mage':
-                // 奥术星雨：30 枚追踪飞弹，以黄金角均匀散开
-                for (let i = 0; i < 30; i++) {
-                    this.later(i * 0.05, () => {
-                        const a = i * 2.39996;
-                        const p = this.spawnProj('homing', 'bolt', null, this.px, this.py, Math.cos(a) * 420, Math.sin(a) * 420, this.skillDmg(12, 2.5), 1, 3, 10);
-                        p.turn = 7;
-                        p.sp.color = colorOf(0xd090ff);
-                        p.node.setScale(PX * 1.3, PX * 1.3, 1);
-                        if (i % 3 === 0) Sound.play('shoot');
-                    });
-                }
-                this.ultT = 1.6;
-                break;
-            case 'rogue':
-                this.dashT = 0.28;
-                this.invulnT = 0.6;
-                Sound.play('dash');
-                break;
-            case 'knight':
-                this.ultT = 3;
-                this.invulnT = 3;
-                Sound.play('slam');
-                break;
-            case 'nun': {
-                const sp = mkSprite(this.zoneLayer, 'aura', 340 / 64);
-                sp.node.setPosition(px, py);
-                this.sanctum = { x: px, y: py, sp };
-                this.ultT = 6;
-                Sound.play('heal');
-                break;
-            }
-            case 'pyro': {
-                const c = this.densest() || { x: px + this.dirX * 150, y: py + this.dirY * 150 };
-                this.warnCircle(c.x, c.y, 190, 0.8, 0xffa030);
-                const f = this.spawnFx('meteor', c.x, c.y + 360, 0.8, PX * 4, 0);
-                f.vy = -360 / 0.8;
-                this.later(0.8, () => {
-                    this.explodeFriendly(c.x, c.y, 190, this.skillDmg(70, 9), null, 500, 0xff6020);
-                    for (let i = 0; i < 6; i++) {
-                        const a = (i / 6) * TAU;
-                        this.spawnPZone('fire', null, c.x + Math.cos(a) * 110, c.y + Math.sin(a) * 110, 55, 5, this.skillDmg(6, 1));
-                    }
-                    this.spawnPZone('fire', null, c.x, c.y, 70, 5, this.skillDmg(6, 1));
-                    this.hitstop = 0.12;
-                    this.addShake(0.6, 14);
-                });
-                this.ultT = 1.2;
-                Sound.play('fire');
-                break;
-            }
-            case 'bomber': {
-                // 地毯轰炸：沿面朝方向一路投下 14 颗炸弹，依次引爆
-                const nx = -this.dirY, ny = this.dirX;
-                for (let i = 0; i < 12; i++) {
-                    const d = 50 + i * 45, side = (i % 2 ? 1 : -1) * 26;
-                    const p = this.spawnProj('ubomb', 'bomb_0', null, px + this.dirX * d + nx * side, py + this.dirY * d + ny * side, 0, 0, this.skillDmg(30, 5), 0, 0.4 + i * 0.07, 0);
-                    p.node.setScale(PX * 1.2, PX * 1.2, 1);
-                }
-                this.ultT = 1.5;
-                Sound.play('throw');
-                break;
-            }
-            case 'sage':
-                this.ultT = 4;
-                break;
-            case 'druid': {
-                // 万木回春：藤蔓把周围敌人拽到身边，随后缠住 3 秒
-                for (const e of this.grid.query(px, py, 360, this.qbuf).slice()) {
-                    if (!e.alive || e.def.prop || e.def.boss) continue;
-                    const dx = px - e.x, dy = py - e.y, d = Math.hypot(dx, dy) || 1;
-                    if (d > 340) continue;
-                    e.frozen = 0;
-                    const k = Math.max(0, d - 50) * 10;
-                    e.kx = (dx / d) * k;
-                    e.ky = (dy / d) * k;
-                }
-                this.later(0.35, () => {
-                    for (const e of this.grid.query(this.px, this.py, 160, this.qbuf).slice()) {
-                        if (Math.hypot(e.x - this.px, e.y - this.py) < 140 + e.def.radius) this.freezeEnemy(e, 2.5);
-                    }
-                    this.burst(this.px, this.py, 0x60c050, 24, 300);
-                });
-                this.heal(this.stats.maxHp * 0.15);
-                const f = this.spawnFx('aura', px, py, 0.6, 680 / 64 * 0.5, -0.8);
-                f.sp.color = colorOf(0x60c050);
-                this.ultT = 0.5;
-                Sound.play('heal');
-                break;
-            }
-            case 'prism':
-                // 光谱爆发：三轮 12 道彩虹光束，每轮错开角度
-                for (let v = 0; v < 3; v++) {
-                    this.later(v * 0.3, () => {
-                        for (let i = 0; i < 12; i++) {
-                            const a = (i / 12) * TAU + v * 0.13;
-                            this.beamHit(this.px, this.py, a, 600, 14, this.skillDmg(16, 2.5), [0xff6080, 0xffc060, 0x80ff90, 0x70a0ff][i % 4]);
-                        }
-                        Sound.play('beam');
-                    });
-                }
-                this.ultT = 1;
-                break;
-            case 'fu': {
-                // 财神到：身边的小怪全部变成金币（精英与 Boss 只受伤）
-                let n = 0;
-                for (const e of this.enemies.slice()) {
-                    if (!e.alive || e.def.prop || Math.hypot(e.x - px, e.y - py) > 280) continue;
-                    if (e.def.boss || e.elite) { this.hurtEnemy(e, Math.round(e.maxHp * (e.elite ? 0.3 : 0.05)), 0, px, py, null); continue; }
-                    if (n++ < 70) this.spawnPickup('coin', e.x, e.y, 1 + Math.floor(Math.random() * 2), true);
-                    this.burst(e.x, e.y, 0xffd040, 3, 160);
-                    this.hurtEnemy(e, e.hp + 1, 0, px, py, null);
-                }
-                this.later(0.3, () => { for (const g of this.pickups) if (g.alive && (g.kind === 'gem' || g.kind === 'coin')) g.pulled = true; });
-                const f = this.spawnFx('aura', px, py, 0.6, 2, 7.5);
-                f.sp.color = colorOf(0xffd040);
-                this.ultT = 3;
-                Sound.play('chest');
-                break;
-            }
-            case 'santa': {
-                // 圣诞雪橇：横穿屏幕投下一串礼物炸弹
-                const dir = this.faceX, y = py + 60;
-                for (let i = 0; i < 10; i++) {
-                    const x = px - dir * this.vw / 2 + dir * (i + 0.5) * this.vw / 10, yy = y - (i % 2) * 120;
-                    this.later(i * 0.12, () => {
-                        const g = this.spawnFx('gift', x, yy + 160, 0.25, PX * 1.4, 0);
-                        g.vy = -640;
-                        this.later(0.25, () => this.explodeFriendly(x, yy, 85, this.skillDmg(35, 5), null, 260, 0xff5050));
-                    });
-                }
-                const a = Math.random() * TAU;
-                this.spawnPickup(BUFF_DROPS[Math.floor(Math.random() * BUFF_DROPS.length)], px + Math.cos(a) * 60, py + Math.sin(a) * 60, 0, true);
-                this.ultT = 1.6;
-                Sound.play('chest');
-                break;
-            }
-        }
+        if (this.isChar('hunter')) this.ultT = 2.5;
+        else this.castMemeUlt();
     }
 
-    // 影袭结束：在终点爆发一圈飞刀
+    // 哈基米扑击落地：范围伤害并获得短暂加速
     private rogueFinale() {
-        for (let i = 0; i < 16; i++) {
-            const a = (i / 16) * TAU;
-            const p = this.spawnProj('knife', 'knife', null, this.px, this.py, Math.cos(a) * 620, Math.sin(a) * 620, this.skillDmg(15, 3), 3, 1.2, 10);
-            p.node.angle = a * 180 / Math.PI;
-            p.node.setScale(PX * 1.2, PX * 1.2, 1);
-            p.sp.color = colorOf(0xc0a0ff);
-        }
-        this.burst(this.px, this.py, 0x8060c0, 20, 300);
-        Sound.play('knife');
+        this.memePulse(110, 6, 0xffcf91, 180);
+        this.memeSpeedT = 3;
     }
 
     // 持续型大招的逐帧效果 + 基础充能
     private updateUlt(dt: number) {
         const ch = this.char.charge;
         if (this.ultBuffT > 0) this.ultBuffT -= dt;
-        this.chargeUlt(dt / 100 + (ch === 'time' ? dt / 60 : 0) + (ch === 'still' && !this.moving ? dt / 15 : 0));
+        if (this.isChar('hunter')) this.chargeUlt(dt / 100);
+        else if (ch === 'time') this.chargeUlt(dt * 0.02);
         if (this.ult < 1 && this.ultBank > 0) {
             const k = Math.min(this.ultBank, dt / 60 * this.ultRate());
             this.ultBank -= k;
             this.chargeUlt(k, true);
         }
         if (this.ultT <= 0) return;
+        if (!this.isChar('hunter')) { this.updateMemeUlt(dt); return; }
         this.ultT -= dt;
         this.ultTick -= dt;
         const px = this.px, py = this.py;
         switch (this.char.id) {
             case 'hunter': {
-                // 鞭影风暴：双鞭旋转横扫
+                // 刀盾风暴：大刀旋转横扫 + 盾牌把范围内的敌方子弹弹反成飞刀（每帧检测）
+                const R = 150 * this.stats.area;
+                for (const b of this.bullets) {
+                    if (!b.alive || Math.hypot(b.x - px, b.y - py) > R + 20) continue;
+                    b.alive = false;
+                    b.node.active = false;
+                    const a = Math.atan2(b.y - py, b.x - px);
+                    const r = this.spawnProj('bolt', 'knife', null, b.x, b.y, Math.cos(a) * 520, Math.sin(a) * 520, this.skillDmg(10, 2), 2, 1.2, 10);
+                    r.node.angle = (a * 180) / Math.PI;
+                    r.node.setScale(PX * 1.2, PX * 1.2, 1);
+                    r.sp.color = colorOf(0xf5c542);
+                    this.burst(b.x, b.y, 0xf5c542, 4, 160);
+                }
                 if (this.ultTick > 0) break;
                 this.ultTick = 0.25;
-                const R = 150 * this.stats.area;
                 for (const e of this.grid.query(px, py, R + 30, this.qbuf).slice()) {
                     if (e.alive && !e.def.prop && Math.hypot(e.x - px, e.y - py) < R + e.def.radius) this.hurtEnemy(e, this.skillDmg(7, 1.4), 180, px, py, null);
                 }
@@ -3203,46 +3227,7 @@ export class Battle {
                 Sound.play('whip');
                 break;
             }
-            case 'knight':
-                if (this.ultTick > 0) break;
-                this.ultTick = 0.5;
-                this.explodeFriendly(px, py, 135, this.skillDmg(15, 3), null, 420, 0xffd060, false);
-                Sound.play('slam');
-                break;
-            case 'sage': {
-                if (this.ultTick > 0) break;
-                this.ultTick = 0.15;
-                const b = this.boss;
-                const t = b && b.alive && Math.random() < 0.3 && Math.abs(b.x - px) < this.vw / 2 && Math.abs(b.y - py) < this.vh / 2 ? b : this.randomOnScreen();
-                if (!t) break;
-                const f = this.spawnFx('lightning', t.x, t.y, 0.25, PX, 0);
-                f.node.getComponent(UITransform)!.setAnchorPoint(0.5, 0);
-                f.sp.color = colorOf(0xd0b0ff);
-                this.explodeFriendly(t.x, t.y, 55, this.skillDmg(22, 3), null, 60, 0xc0a0ff, false);
-                Sound.play('lightning');
-                break;
-            }
-            case 'nun': {
-                const z = this.sanctum;
-                if (!z) break;
-                const R = 170;
-                const pulse = 1 + Math.sin(this.time * 5) * 0.04;
-                z.sp.node.setScale(R * 2 / 64 * pulse, R * 2 / 64 * pulse, 1);
-                z.sp.color = tmpColor.set(255, 230, 140, Math.floor(200 * Math.min(1, this.ultT)));
-                if (Math.hypot(px - z.x, py - z.y) < R) this.heal(3 * dt);
-                // 圣域内的敌方弹幕被净化
-                for (const b of this.bullets) {
-                    if (b.alive && Math.hypot(b.x - z.x, b.y - z.y) < R) { b.alive = false; this.burst(b.x, b.y, 0xfff0a0, 3, 120); }
-                }
-                if (this.ultTick <= 0) {
-                    this.ultTick = 0.5;
-                    for (const e of this.grid.query(z.x, z.y, R + 30, this.qbuf).slice()) {
-                        if (e.alive && !e.def.prop && Math.hypot(e.x - z.x, e.y - z.y) < R + e.def.radius) this.hurtEnemy(e, this.skillDmg(8, 1.5), 120, z.x, z.y, null);
-                    }
-                }
-                if (this.ultT <= 0) { z.sp.node.destroy(); this.sanctum = null; }
-                break;
-            }
+
         }
     }
 
@@ -3261,13 +3246,13 @@ export class Battle {
     }
 
     // 直线光束：贯穿线上所有敌人
-    private beamHit(x: number, y: number, a: number, len: number, half: number, dmg: number, color: number) {
+    private beamHit(x: number, y: number, a: number, len: number, half: number, dmg: number, color: number, knock = 40) {
         const dx = Math.cos(a), dy = Math.sin(a);
         for (const e of this.grid.query(x + dx * len / 2, y + dy * len / 2, len / 2 + 40, this.qbuf).slice()) {
             if (!e.alive || e.def.prop) continue;
             const rx = e.x - x, ry = e.y - y, along = rx * dx + ry * dy;
             if (along < 0 || along > len || Math.abs(rx * dy - ry * dx) > half + e.def.radius) continue;
-            this.hurtEnemy(e, dmg, 40, x, y, null);
+            this.hurtEnemy(e, dmg, knock, x, y, null);
         }
         this.lineFx(x, y, x + dx * len, y + dy * len, color, half * 2 + 6);
         this.lineFx(x, y, x + dx * len, y + dy * len, 0xffffff, Math.max(3, half * 0.7));
@@ -3823,7 +3808,7 @@ export class Battle {
                 const lucky = this.isChar('fu') && Math.random() < 0.2;
                 const g = Math.max(1, Math.round(p.value * this.stats.greed * this.stage.goldMul * (this.hasB('greedpact') ? 2 : 1) * (this.mod('gold3') ? 3 : 1) * (this.nightmare ? 1.6 : 1) * (lucky ? 2 : 1)));
                 this.gold += g;
-                if (this.char.charge === 'gold') this.chargeUlt(g / 40);
+                if (this.char.charge === 'gold') this.chargeUlt(p.value / 100);
                 this.dmgText(this.px, this.py + 40, g, C_GOLD, '+');
                 Sound.play('coin');
                 break;
@@ -3850,7 +3835,6 @@ export class Battle {
             this.level++;
             this.xpNext = xpForLevel(this.level);
             this.pendingLevels++;
-            if (this.isChar('mage')) this.arcaneT = 4;
             if (this.char.charge === 'level') this.chargeUlt(0.35);
         }
     }
@@ -4223,7 +4207,7 @@ export class Battle {
 
     // 范围爆炸：伤害玩家 + 特效
     explode(x: number, y: number, r: number, dmg: number, color: number) {
-        if (Math.hypot(this.px - x, this.py - y) < r + 10) this.hurtPlayer(this.isChar('bomber') ? dmg * 0.5 : dmg);
+        if (Math.hypot(this.px - x, this.py - y) < r + 10) this.hurtPlayer(dmg);
         const f = this.spawnFx('aura', x, y, 0.35, (r * 2) / 64, 0.6);
         f.sp.color = colorOf(color);
         this.burst(x, y, color, 16, 320);

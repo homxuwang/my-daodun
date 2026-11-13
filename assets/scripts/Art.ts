@@ -9,7 +9,8 @@ export class Art {
         if (this.frames.size) return;
         const atlas = buildAtlas();
         // 浏览器渲染器：把 RGBA 图集铺成离屏 canvas（真机由引擎上传贴图，renderer 未挂 canvas 时跳过）
-        if (renderer && (renderer as any).buildAtlasCanvas) renderer.buildAtlasCanvas(atlas.size, atlas.data);
+        const previewRenderer = renderer as unknown as { buildAtlasCanvas?: (size: number, data: Uint8Array) => void };
+        previewRenderer?.buildAtlasCanvas?.(atlas.size, atlas.data);
         const img = new ImageAsset({
             _data: atlas.data,
             _compressed: false,

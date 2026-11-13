@@ -21,3 +21,6 @@ Thumbs.db
 *.log
 *.tmp
 /tmp/
+
+# Local preview cache
+.preview/

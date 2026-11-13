@@ -1,31 +1,47 @@
-#!/bin/bash
-# 构建微信小游戏包 → build/wechatgame（需本机安装 Cocos Creator 3.8.8，WSL 下调用 Windows 版）
-# 用法：tools/build-wechat.sh [AppID]
-set -e
+#!/usr/bin/env bash
+# CREATOR=/path/to/CocosCreator WECHAT_APPID=wx... npm run build:wechat
+set -euo pipefail
 cd "$(dirname "$0")/.."
-if [ -n "$1" ]; then
-  python3 - "$1" <<'PY'
-import json, sys
-p = 'build-wechat.json'
-d = json.load(open(p, encoding='utf-8'))
-d['packages']['wechatgame']['appid'] = sys.argv[1]
-json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
-PY
+APP_ID="${1:-${WECHAT_APPID:-}}"
+CHECK_ARGS=()
+if [ -n "$APP_ID" ]; then CHECK_ARGS+=(--appid "$APP_ID"); fi
+node tools/wechat-preflight.mjs "${CHECK_ARGS[@]}"
+npm run check:cocos
+if [ -z "${CREATOR:-}" ] || [ ! -f "$CREATOR" ]; then
+  echo '构建中止：请安装 Cocos Creator 3.8.8，并将 CREATOR 设置为其可执行文件完整路径。' >&2
+  exit 1
 fi
-grep -q "debugFake: false" assets/scripts/AdConfig.ts || { echo "❌ AdConfig.debugFake 不是 false"; exit 1; }
-grep -q "force: false }" assets/scripts/Defs.ts || { echo "❌ Defs.ts 中 EVENT.force 不是 false"; exit 1; }
-CREATOR=${CREATOR:-/mnt/c/ProgramData/cocos/editors/Creator/3.8.8/CocosCreator.exe}
-WIN_ROOT=$(wslpath -w "$PWD")
+PROJECT_PATH="$PWD"
 mkdir -p build
+CONFIG_PATH="$PWD/build/.wechat-build-config.json"
+node --input-type=module - "$APP_ID" "$CONFIG_PATH" <<'JS'
+import fs from 'node:fs';
+const config=JSON.parse(fs.readFileSync('build-wechat.json','utf8'));
+if(process.argv[2])config.packages.wechatgame.appid=process.argv[2];
+if(!config.packages.wechatgame.appid)config.packages.wechatgame.appid=JSON.parse(fs.readFileSync('build-templates/wechatgame/project.config.json','utf8')).appid;
+fs.writeFileSync(process.argv[3],JSON.stringify(config,null,2));
+JS
+trap 'rm -f "$CONFIG_PATH"' EXIT
+# Windows executables launched from WSL require Windows paths; native macOS/Linux do not.
+if [[ "$CREATOR" == *.exe ]] && command -v wslpath >/dev/null 2>&1; then
+  PROJECT_PATH="$(wslpath -w "$PWD")"
+  CONFIG_PATH_NATIVE="$(wslpath -w "$CONFIG_PATH")"
+else
+  CONFIG_PATH_NATIVE="$CONFIG_PATH"
+fi
 set +e
-"$CREATOR" --project "$WIN_ROOT" --build "configPath=$WIN_ROOT\\build-wechat.json" > build/build-wechat.log 2>&1
+"$CREATOR" --project "$PROJECT_PATH" --build "configPath=$CONFIG_PATH_NATIVE" > build/build-wechat.log 2>&1
 code=$?
 set -e
-if [ $code -ne 36 ] && [ $code -ne 0 ]; then echo "❌ 构建失败（退出码 $code），日志：build/build-wechat.log"; exit 1; fi
-sed -i 's/"projectname":"[^"]*"/"projectname":"我的刀盾"/' build/wechatgame/project.config.json
-if [ -f build/wechatgame/first-screen.js ]; then
-  sed -i 's/^let useLogo = true;/let useLogo = false;/' build/wechatgame/first-screen.js
-  rm -f build/wechatgame/logo.png build/wechatgame/slogan.png
+if [ "$code" -ne 36 ] && [ "$code" -ne 0 ]; then
+  echo "构建失败（退出码 $code），日志：build/build-wechat.log" >&2; exit 1
 fi
+# Never accept a successful process exit as proof that a runnable game was built.
+for file in game.js game.json project.config.json; do
+  if [ ! -f "build/wechatgame/$file" ] || [ "build/wechatgame/$file" -ot "$CONFIG_PATH" ]; then
+    echo "构建产物缺失或陈旧：build/wechatgame/$file，请检查构建日志。" >&2; exit 1
+  fi
+done
 node tools/wechat-postbuild.mjs
-echo "✅ 构建完成：build/wechatgame（$(du -sh build/wechatgame | cut -f1)，主包上限 4MB）"
+node tools/wechat-preflight.mjs "${CHECK_ARGS[@]}" --package build/wechatgame --report build/wechat-preflight.json
+echo '本地构建与包结构检查通过：build/wechatgame。下一步必须用微信开发者工具导入并真机验收。'

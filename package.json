@@ -11,9 +11,15 @@
     "build:web": "node tools/compile-web.mjs",
     "check": "tsc -p tools/tsconfig.check.json",
     "serve": "node tools/serve.mjs 8090",
-    "build:wechat": "bash tools/build-wechat.sh"
+    "build:wechat": "bash tools/build-wechat.sh",
+    "test:meme": "node tools/tests/meme-regression.mjs",
+    "check:cocos": "tsc -p tools/tsconfig.cocos-check.json",
+    "check:wechat": "node tools/wechat-preflight.mjs --environment --package build/wechatgame --report docs/validation/wechat-preflight.json",
+    "test:wechat": "node tools/tests/wechat-release.mjs",
+    "test:launch": "node tools/tests/launch-smoke.mjs"
   },
   "devDependencies": {
+    "@cocos/creator-types": "3.8.8",
     "playwright-core": "^1.65.0",
     "typescript": "^5.6.0"
   }

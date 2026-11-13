@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "strict": false,
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["@cocos/creator-types/engine"],
+    "lib": ["ES2020", "DOM"]
+  },
+  "include": ["../assets/**/*.ts", "cocos-env.d.ts"]
+}

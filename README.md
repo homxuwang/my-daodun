@@ -69,3 +69,13 @@ npm run build:wechat   # tools/build-wechat.sh（需本机 Cocos Creator 3.8.8�
 - **`tools/fix-imports.mjs` 已废弃**：它会把后缀写回源码、破坏 Cocos 兼容，现在直接退出。
 - **截图验收**：`node tools/shot.mjs http://localhost:8090/web/index.html /tmp/shot.png`（`/web/` 与 `/web/index.html` 均可）。
 - **页面报 `Unexpected token ')'`**：一定是某个 `.js` 产物语法坏了，先 `node --check` 全部 `web/js/**/*.js` 定位。
+
+
+## 微信正式发布验证
+
+浏览器可玩不代表微信已验证。当前发布结论和阻断项见 [微信上线验收报告](docs/wechat-release-readiness.md)。
+
+- `npm run check:cocos`：使用官方 Cocos Creator 3.8.8 类型检查全部游戏脚本。
+- `npm run check:wechat`：检查正式 AppID、发布开关、构建环境及真实微信游戏包；有阻断时返回非零退出码。
+- `npm run test:wechat`：验证发布检查、构建包装脚本与微信音频模拟场景。
+- 浏览器入口已迁到 `_shims/web-main.ts`，不进入 Cocos 的 `assets` 目录。

@@ -505,7 +505,7 @@ export class GameRoot extends Component {
     private castUlt() {
         if (this.state !== 'play') return;
         if (this.battle.useUlt()) vibrate();
-        else if (this.battle.ult < 1) this.showToast(`大招充能中：${CHARGE_DESC[this.battle.char.charge]}`);
+        else if (this.battle.ult < 1) this.showToast(`大招充能中：${(this.battle.char.chargeDesc || CHARGE_DESC[this.battle.char.charge])}`);
     }
 
     // ------------------------------------------------------------------ 胜利过渡动画
@@ -966,7 +966,8 @@ export class GameRoot extends Component {
         traitLbl.node.setPosition(0, by + 262);
         this.refreshers.push(() => {
             const c = this.selectedChar();
-            traitLbl.string = `★ 天赋「${c.traitName}」${c.trait}\n◆ 大招「${c.ultName}」${c.ult}\n充能：${CHARGE_DESC[c.charge]}`;
+            const wrap = (text: string) => text.match(/.{1,30}/gu)?.join('\n') || '';
+            traitLbl.string = [wrap(`★ 天赋「${c.traitName}」${c.trait}`), wrap(`◆ 大招「${c.ultName}」${c.ult}`), wrap(`充能：${c.chargeDesc || CHARGE_DESC[c.charge]}`)].join('\n');
         });
         // 地图选择：点击切换到下一张已解锁的地图
         const stageBtn = mkButton(s, '', 560, 64, () => {
@@ -2362,7 +2363,7 @@ export class GameRoot extends Component {
         if (b.hasteT > 0) buffs.push(`急速 ${Math.ceil(b.hasteT)}s`);
         if (b.cloverT > 0) buffs.push(`幸运 ${Math.ceil(b.cloverT)}s`);
         if (b.fireT > 0) buffs.push(`烈焰 ${Math.ceil(b.fireT)}s`);
-        if (b.arcaneT > 0) buffs.push('奥术涌流');
+        buffs.push(...b.characterBuffs);
         if (b.giantT > 0) buffs.push(`巨人 ${Math.ceil(b.giantT)}s`);
         if (b.bootsT > 0) buffs.push(`疾风 ${Math.ceil(b.bootsT)}s`);
         if (b.decoyT > 0) buffs.push(`幻影 ${Math.ceil(b.decoyT)}s`);

@@ -1,0 +1,66 @@
+{
+  "checkedAt": "2026-11-12T14:08:55.888Z",
+  "status": "blocked",
+  "checks": [
+    {
+      "id": "appid",
+      "status": "fail",
+      "message": "需要真实微信小游戏 AppID；不接受空值、tourist 或引擎默认测试 AppID"
+    },
+    {
+      "id": "appid-consistency",
+      "status": "pass",
+      "message": "构建配置与模板中已填写的 AppID 必须一致"
+    },
+    {
+      "id": "real-ads",
+      "status": "pass",
+      "message": "正式版本禁止模拟广告发奖"
+    },
+    {
+      "id": "real-events",
+      "status": "pass",
+      "message": "正式版本禁止强制开启节日活动"
+    },
+    {
+      "id": "release-build",
+      "status": "pass",
+      "message": "使用非调试构建并关闭源码映射"
+    },
+    {
+      "id": "portrait",
+      "status": "pass",
+      "message": "微信构建必须为竖屏"
+    },
+    {
+      "id": "start-scene",
+      "status": "pass",
+      "message": "初始场景必须匹配 Main.scene UUID"
+    },
+    {
+      "id": "open-data-source",
+      "status": "pass",
+      "message": "好友排行开放数据域源文件存在"
+    },
+    {
+      "id": "ads-configured",
+      "status": "warning",
+      "message": "广告位尚未配置；首版可无广告运行，不能验证广告收益"
+    },
+    {
+      "id": "creator",
+      "status": "fail",
+      "message": "当前环境需要 CREATOR 指向 Cocos Creator 3.8.8 可执行文件"
+    },
+    {
+      "id": "package-entry",
+      "status": "fail",
+      "message": "真实构建包必须包含 game.js、game.json、project.config.json"
+    }
+  ],
+  "unverified": [
+    "Cocos实际构建及引擎启动",
+    "微信开发者工具导入与iOS/Android真机验收",
+    "微信后台资质、素材授权、审核状态与发布时间"
+  ]
+}

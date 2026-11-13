@@ -27,7 +27,7 @@ const tsconfig = {
         paths: { 'cc': ['_shims/cc.ts'], 'cc/env': ['_shims/cc-env.ts'] },
         lib: ['ES2020', 'DOM'],
     },
-    include: ['assets/scripts/**/*.ts', 'assets/web-main.ts', '_shims/cc.ts', '_shims/cc-env.ts'],
+    include: ['assets/scripts/**/*.ts', '_shims/web-main.ts', '_shims/cc.ts', '_shims/cc-env.ts'],
     exclude: ['node_modules', 'build', 'library', 'temp', 'check-out', 'tools'],
 };
 const cfgPath = path.join(root, 'tsconfig.web.json');

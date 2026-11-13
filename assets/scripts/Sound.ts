@@ -12,6 +12,7 @@ interface Tone {
 
 // 每个音效 = 一组音调（频率 Hz、时长秒、波形、音量）
 const SFX: Record<string, Tone[]> = {
+    sonic:   [{ f: 360, f2: 760, d: 0.16, type: 'sine', vol: 0.13 }],
     click:   [{ f: 660, d: 0.05, type: 'square', vol: 0.10 }],
     start:   [{ f: 440, d: 0.08 }, { f: 660, d: 0.08, delay: 0.08 }, { f: 880, d: 0.14, delay: 0.16 }],
     levelup: [{ f: 523, d: 0.08 }, { f: 659, d: 0.08, delay: 0.08 }, { f: 784, d: 0.08, delay: 0.16 }, { f: 1047, d: 0.18, delay: 0.24 }],
@@ -72,9 +73,11 @@ export class Sound {
     static init(_parent?: Node) {
         if (this.ctx) return;
         try {
-            const AC = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
-            if (!AC) return;
-            this.ctx = new AC();
+            const g = globalThis as any;
+            const platform = g.wx || g.tt;
+            const AC = g.AudioContext || g.webkitAudioContext;
+            this.ctx = platform?.createWebAudioContext ? platform.createWebAudioContext() : AC ? new AC() : null;
+            if (!this.ctx) return;
             this.master = this.ctx.createGain();
             this.master.gain.value = 0.9;
             this.master.connect(this.ctx.destination);
@@ -175,7 +178,7 @@ export class Sound {
             const g = globalThis as any;
             const api = g.wx || g.tt;
             if (api && api.vibrateShort) { api.vibrateShort({ type: heavy ? 'heavy' : 'light' }); return; }
-            if (navigator.vibrate) navigator.vibrate(heavy ? 40 : 15);
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(heavy ? 40 : 15);
         } catch (e) { /* 忽略 */ }
     }
 }

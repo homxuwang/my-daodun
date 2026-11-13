@@ -21,7 +21,7 @@
 <script type="module">
   window.addEventListener('error', e => { document.getElementById('err').textContent += (e.message + '\n'); });
   window.addEventListener('unhandledrejection', e => { document.getElementById('err').textContent += (String(e.reason && e.reason.stack || e.reason) + '\n'); });
-  import('./js/assets/web-main.js').catch(e => { document.getElementById('err').textContent += (e.stack || e) + '\n'; });
+  import('./js/_shims/web-main.js').catch(e => { document.getElementById('err').textContent += (e.stack || e) + '\n'; });
 </script>
 </body>
 </html>

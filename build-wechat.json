@@ -22,5 +22,6 @@
       "separateEngine": false,
       "buildOpenDataContextTemplate": false
     }
-  }
+  },
+  "name": "我的刀盾"
 }

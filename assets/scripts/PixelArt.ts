@@ -1,4 +1,4 @@
-import { HERO_ART } from './HeroArt';
+import { MEME_ART } from './MemeArt';
 
 // 纯数据的像素画生成器（不依赖 cc），所有贴图都在这里程序化绘制并打包成图集。
 // 坐标系：左上角为原点，y 向下。
@@ -120,28 +120,10 @@ const OUT = 0x1a1020;
 // ---------------------------------------------------------------- 角色
 
 // 角色列表（与 Defs.ts 中 CHARACTERS 的 sprite 对应：hero_<kind>_<帧>）
-export const HERO_KINDS = ['hunter', 'mage', 'rogue', 'knight', 'nun', 'pyro', 'bomber', 'sage'];  // 福娃（hero_fu）由奶娃加装扮生成
+export const HERO_KINDS = ['hunter', 'mage', 'rogue', 'knight', 'nun', 'pyro', 'bomber', 'sage', 'druid', 'prism', 'fu', 'santa'];
 
 // ---------------------------------------------------------------- 我的刀盾（主角）
-// 我的刀盾：头顶「菜」字，右手菜刀，左手锅盖
-// 角色像素图由 tools/import-heroes.py 从参考图导入（HeroArt.ts），这里解码并生成走路帧
-
-function decodeHero(a: { w: number; h: number; pal: string; px: string }) {
-    const c = new PixelCanvas(a.w, a.h);
-    const pal = a.pal.split(',').map(h => parseInt(h, 16));
-    const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-/:;<=>?@[]^_{|}~';
-    let i = 0, k = 0;
-    const s = a.px;
-    while (i < s.length) {
-        const ch = s[i++];
-        let n = 0;
-        while (i < s.length && s[i] >= '0' && s[i] <= '9') n = n * 10 + (s.charCodeAt(i++) - 48);
-        if (n === 0) n = 1;
-        const idx = ch === '.' ? -1 : ALPHA.indexOf(ch);
-        for (let m = 0; m < n; m++, k++) if (idx >= 0) c.px(k % a.w, Math.floor(k / a.w), pal[idx]);
-    }
-    return c;
-}
+// 刀盾狗保留 drawDaodun，其余角色由 drawMemeHero 绘制独立的三帧像素动画。
 
 // 以脚底为锚点缩放（走路的挤压 / 拉伸），所有帧画布尺寸一致，避免抖动
 function heroFrame(src: PixelCanvas, sx: number, sy: number) {
@@ -159,6 +141,68 @@ function heroFrame(src: PixelCanvas, sx: number, sy: number) {
             c.data[o] = src.data[i]; c.data[o + 1] = src.data[i + 1]; c.data[o + 2] = src.data[i + 2]; c.data[o + 3] = 255;
         }
     }
+    return c;
+}
+
+// 我的刀盾：网络 meme「刀盾狗」。圆滚滚的柴犬团子，Doge 脸 + 小圆耳，左爪举短剑，右爪持铁边木盾，身上斜挎皮带
+function drawDaodun() {
+    const W = 50, H = 64;
+    const c = new PixelCanvas(W, H);
+    const FUR = 0xe0a058, FURD = 0xb87436, FURL = 0xf2c47e, CREAM = 0xfff3e0, CREAMD = 0xe8d4b8;
+    const NOSE = 0x241a18, LEA = 0x8a5a34, LEAD = 0x5e3a20, LEAL = 0xb07c4c;
+    const STEEL = 0xdfe6f0, STEELD = 0x8e9aae, WOOD = 0x9a6638, WOODD = 0x6e4422, WOODL = 0xb8824e;
+    // 小脚丫（在身体下方先画）
+    c.ellipse(15, 59, 4, 2.5, CREAMD); c.ellipse(35, 59, 4, 2.5, CREAMD);
+    c.px(13, 60, LEAD); c.px(16, 60, LEAD); c.px(34, 60, LEAD); c.px(37, 60, LEAD);
+    // 小圆耳（贴在脑袋两侧）
+    c.ellipse(7, 25, 3, 3.5, FURD); c.ellipse(43, 25, 3, 3.5, FURD);
+    c.ellipse(7.5, 25.5, 1.5, 2, 0x8a5428); c.ellipse(42.5, 25.5, 1.5, 2, 0x8a5428);
+    // 圆滚滚的身体（头身一体）
+    c.ellipse(25, 39, 20.5, 18.5, FUR);
+    c.ellipse(25, 25, 13, 5, FURL);
+    c.ellipse(25, 51, 15, 6.5, CREAM);
+    // Doge 脸：白口鼻 + 白眉点
+    c.ellipse(22.5, 34, 8.5, 6, CREAM);
+    c.ellipse(15, 31, 4, 3, CREAM);
+    c.ellipse(17, 24, 1.6, 1, CREAM); c.ellipse(29, 24, 1.6, 1, CREAM);
+    // 眼睛：小眼斜睨（meme 神态）
+    c.rect(16, 26, 3, 3, NOSE); c.rect(28, 26, 3, 3, NOSE);
+    c.px(16, 26, 0xffffff); c.px(28, 26, 0xffffff);
+    c.line(15, 25, 19, 25, FURD); c.line(27, 25, 31, 25, FURD);
+    // 鼻子 + 得意的微笑
+    c.ellipse(21, 32, 3, 2, NOSE);
+    c.px(20, 31, 0x6a5a58);
+    c.line(21, 34, 21, 35, NOSE);
+    c.line(17, 35, 18, 36, NOSE); c.line(19, 37, 24, 37, NOSE); c.line(25, 36, 26, 35, NOSE); c.px(27, 34, NOSE);
+    c.rect(21, 38, 2, 1, 0xe86a6a);
+    c.px(16, 34, CREAMD); c.px(26, 33, CREAMD); c.px(27, 34, CREAMD);
+    // 斜挎皮带（右上 → 左下）+ 铆钉
+    c.line(40, 35, 10, 46, LEA, 255, 2);
+    c.line(40, 36, 10, 47, LEAD);
+    for (const [x, y] of [[34, 37], [24, 41], [15, 44]] as [number, number][]) c.px(x, y, LEAL);
+    // 腰带 + 方扣
+    c.rect(7, 47, 36, 4, LEA);
+    c.rect(7, 50, 36, 1, LEAD);
+    c.rect(21, 46, 8, 6, STEELD); c.rect(23, 48, 4, 2, LEA); c.px(21, 46, STEEL); c.px(22, 46, STEEL);
+    // 右爪持盾：铁边木制鸢形盾
+    c.poly([[33, 29], [48, 27], [48.5, 45], [42, 55], [34, 47]], STEELD);
+    c.poly([[35, 31], [46.5, 29.5], [46.5, 44.5], [41.5, 52], [36, 46]], WOOD);
+    c.line(39, 31, 39, 49, WOODD); c.line(43, 30, 43, 50, WOODD);
+    c.line(36, 33, 36, 44, WOODL); c.line(40, 31, 40, 48, WOODL); c.line(44, 30, 44, 46, WOODL);
+    c.line(34, 30, 47, 28, STEEL);
+    for (const [x, y] of [[35, 30], [41, 29], [47, 28], [48, 37], [47, 45], [34, 38]] as [number, number][]) c.px(x, y, STEEL);
+    c.circle(33, 38, 3, FUR);
+    // 左爪举短剑：皮袖 + 爪子 + 剑柄/护手/剑身
+    c.line(12, 40, 8, 33, LEA, 255, 4);
+    c.line(10, 41, 6, 34, LEAD);
+    c.rect(5, 31, 3, 2, LEAD);
+    c.line(6, 30, 6, 24, WOODD, 255, 2);
+    c.circle(7, 29, 3, FURL);
+    c.rect(3, 22, 8, 2, LEAD);
+    c.poly([[4.5, 22], [9.5, 22], [9.5, 7], [7, 2], [4.5, 7]], STEEL);
+    c.poly([[4.5, 22], [6.5, 22], [6.5, 6], [4.5, 7]], STEELD);
+    c.line(8, 8, 8, 20, 0xffffff);
+    c.outline(OUT);
     return c;
 }
 
@@ -1433,9 +1477,13 @@ function icon(fn: (c: PixelCanvas) => void, outline = true) {
 
 const ICONS: Record<string, () => PixelCanvas> = {
     icon_whip: () => icon(c => {
-        c.ring(9, 7, 5, 2, 0x8a5a30);
-        c.line(3, 14, 6, 10, 0x4a2a14, 255, 2);
-        c.px(13, 3, 0xc8a070);
+        // 刀盾：斜挎大刀 + 圆盾
+        c.line(4, 13, 6, 11, 0x6b3a1f, 255, 2);
+        c.line(5, 9, 8, 12, 0xf5c542);
+        c.poly([[7, 10], [13, 2], [14, 3], [9, 11]], 0xdfe6f0);
+        c.circle(10.5, 10.5, 4, 0x8a5a30);
+        c.ring(10.5, 10.5, 4, 1, 0x9aa6ba);
+        c.circle(10.5, 10.5, 1.5, 0xf5c542);
     }),
     icon_wand: () => icon(c => {
         c.line(3, 13, 10, 6, 0x8a5a30, 255, 2);
@@ -2477,20 +2525,49 @@ function drawJoyKnob() {
     return c;
 }
 
+// Detailed source art is baked into the same synchronous atlas as all other sprites.
+// No runtime image downloads; all three frames retain the 48×64 gameplay footprint.
+const memeBases = new Map<string, PixelCanvas>();
+export function drawMemeHero(kind: string, frame = 0): PixelCanvas {
+    let base = memeBases.get(kind);
+    if (!base) {
+        const art = MEME_ART[kind];
+        if (!art) throw new Error(`Unknown meme character: ${kind}`);
+        base = new PixelCanvas(art.w, art.h);
+        let pixel = 0;
+        for (let i = 0; i < art.runs.length; i += 2) {
+            const count = art.runs[i], index = art.runs[i + 1];
+            if (index) for (let k = 0; k < count; k++) base.px((pixel + k) % art.w, Math.floor((pixel + k) / art.w), art.palette[index]);
+            pixel += count;
+        }
+        memeBases.set(kind, base);
+    }
+    const c = new PixelCanvas(base.w, base.h);
+    // Gentle squash-and-step preserves faces and keeps feet on a shared baseline.
+    const sx = frame === 1 ? 1.025 : frame === 2 ? 0.98 : 1;
+    const sy = frame === 1 ? 0.98 : frame === 2 ? 1.02 : 1;
+    for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) {
+        const u = Math.floor((x + 0.5 - c.w / 2) / sx + c.w / 2);
+        let v = Math.floor(62 - (62 - y - 0.5) / sy);
+        if (frame && y >= 53) v += (x < c.w / 2 ? 1 : -1) * (frame === 1 ? 1 : -1);
+        if (u < 0 || v < 0 || u >= base.w || v >= base.h) continue;
+        const i = (v * base.w + u) * 4;
+        if (base.data[i + 3]) c.px(x, y, base.data[i] << 16 | base.data[i + 1] << 8 | base.data[i + 2]);
+    }
+    return c;
+}
+
 // ---------------------------------------------------------------- 打包
 
 export function allSprites(): Record<string, PixelCanvas> {
     const s: Record<string, PixelCanvas> = {};
     for (const k of HERO_KINDS) {
-        const base = decodeHero(HERO_ART[k]);
-        s['hero_' + k + '_0'] = heroFrame(base, 1, 1);
-        s['hero_' + k + '_1'] = heroFrame(base, 1.06, 0.94);
-        s['hero_' + k + '_2'] = heroFrame(base, 0.97, 1.04);
+        for (let f = 0; f < 3; f++) {
+            s['hero_' + k + '_' + f] = k === 'hunter'
+                ? heroFrame(drawDaodun(), [1, 1.06, 0.97][f], [1, 0.94, 1.04][f])
+                : drawMemeHero(k, f);
+        }
     }
-    for (let f = 0; f < 3; f++) s['hero_fu_' + f] = fuFrog(s['hero_hunter_' + f]);
-    for (let f = 0; f < 3; f++) s['hero_druid_' + f] = druidFrog(s['hero_hunter_' + f]);
-    for (let f = 0; f < 3; f++) s['hero_prism_' + f] = prismFrog(s['hero_hunter_' + f]);
-    for (let f = 0; f < 3; f++) s['hero_santa_' + f] = santaFrog(s['hero_hunter_' + f]);
     for (let f = 0; f < 2; f++) {
         s['bat_' + f] = drawBat(f);
         s['slime_' + f] = drawSlime(f);

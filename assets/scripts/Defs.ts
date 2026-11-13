@@ -167,9 +167,9 @@ export interface EventDef {
 }
 export const EVENTS: EventDef[] = [
     { id: 'xmas', name: '圣诞活动', start: '2026-12-18', end: '2027-01-03', stage: 'xmas', boss: 'yeti', char: 'santa',
-      badge: '圣诞活动进行中 · 雪夜小镇开放 · 击败雪怪王得圣诞蛙', lockText: '击败雪怪王解锁\n圣诞限定', hint: '圣诞活动期间，在雪夜小镇击败雪怪王即可解锁' },
+      badge: '圣诞活动进行中 · 雪夜小镇开放 · 击败雪怪王得圣诞猫', lockText: '击败雪怪王解锁\n圣诞限定', hint: '圣诞活动期间，在雪夜小镇击败雪怪王即可解锁' },
     { id: 'cny', name: '新春活动', start: '2027-01-28', end: '2027-02-21', stage: 'fest', boss: 'nian', char: 'fu',
-      badge: '新春活动进行中 · 年夜庙会开放 · 击败年兽得福蛙', lockText: '击败年兽解锁\n新春限定', hint: '新春活动期间，在年夜庙会击败年兽即可解锁' },
+      badge: '新春活动进行中 · 年夜庙会开放 · 击败年兽得招财猫', lockText: '击败年兽解锁\n新春限定', hint: '新春活动期间，在年夜庙会击败年兽即可解锁' },
 ];
 // 测试用：force = true 强制开启新春活动，或填活动 id（如 'xmas'）强制开启对应活动
 export const EVENT: { force: boolean | string } = { force: false };
@@ -206,10 +206,10 @@ export interface WeaponDef {
 
 export const WEAPONS: WeaponDef[] = [
     {
-        id: 'whip', name: '菜刀', icon: 'icon_whip', desc: '向水平方向挥砍，穿透所有敌人。',
+        id: 'whip', name: '刀盾斩', icon: 'icon_whip', desc: '挥动大刀向水平方向横斩，刀光穿透所有敌人。',
         base: { damage: 10, cooldown: 1.35, amount: 1, area: 1, speed: 1, pierce: 999, duration: 0 },
         levels: [
-            { desc: '向身后再抽一鞭', mod: { amount: 1 } },
+            { desc: '向身后再斩一刀', mod: { amount: 1 } },
             { desc: '伤害 +5', mod: { damage: 5 } },
             { desc: '范围 +10%，伤害 +5', mod: { area: 0.1, damage: 5 } },
             { desc: '伤害 +5', mod: { damage: 5 } },
@@ -622,7 +622,7 @@ export interface EvoDef {
 }
 
 export const EVOLUTIONS: Record<string, EvoDef> = {
-    whip:      { passive: 'heart', name: '炽心之鞭', icon: 'icon_whip_evo', desc: '伤害与范围大幅提升，命中时有几率回复生命。', mod: { damage: 20, area: 0.3, cooldown: -0.25 } },
+    whip:      { passive: 'heart', name: '无双刀盾斩', icon: 'icon_whip_evo', desc: '刀光更大更狠，命中时有几率回复生命。', mod: { damage: 20, area: 0.3, cooldown: -0.25 } },
     wand:      { passive: 'tome', name: '星辰法杖', icon: 'icon_wand_evo', desc: '几乎没有冷却，持续倾泻魔法弹。', mod: { cooldown: -0.85, damage: 5, pierce: 1 } },
     knife:     { passive: 'bracer', name: '千刃', icon: 'icon_knife_evo', desc: '飞刀如暴雨般连续射出。', mod: { cooldown: -0.85, damage: 5, pierce: 2 } },
     axe:       { passive: 'candle', name: '旋风飞斧', icon: 'icon_axe_evo', desc: '向四周放射出无限穿透的旋转飞斧。', mod: { damage: 30, amount: 4, pierce: 999, cooldown: -1.5 } },
@@ -662,10 +662,11 @@ export interface CharDef {
     trait: string;
     ultName: string;   // 大招（效果在 Battle.ts 的 castUlt 中按角色 id 实现）
     ult: string;
-    charge: UltCharge; // 大招充能方式：每个角色都不一样，鼓励不同的玩法
+    charge: UltCharge;
+    chargeDesc?: string; // 角色专属充能阈值；刀盾狗继续使用通用说明
 }
 
-// 大招充能方式（所有角色另有 100 秒充满的基础充能；充能速度上限为 60 秒一次）
+// 充能来源；具体阈值由角色 chargeDesc 与战斗实现定义，刀盾狗保留原基础充能。
 export type UltCharge = 'combo' | 'level' | 'move' | 'hurt' | 'heal' | 'kill' | 'boom' | 'time' | 'still' | 'crit' | 'gold';
 export const CHARGE_DESC: Record<UltCharge, string> = {
     combo: '击败敌人充能，连击越高充得越快',
@@ -682,18 +683,18 @@ export const CHARGE_DESC: Record<UltCharge, string> = {
 };
 
 export const CHARACTERS: CharDef[] = [
-    { id: 'hunter', name: '我的刀盾', title: '刀盾守护者', sprite: 'hero_hunter', weapon: 'whip', desc: '最大生命 +20', bonus: { maxHp: 20 }, cost: 0, traitName: '越战越勇', trait: '每击败 100 个敌人伤害 +1%（最多 +25%）', ultName: '刀盾风暴', ult: '2.5 秒内双刀旋转横扫，锅盖弹反周围子弹', charge: 'combo' },
-    { id: 'mage', name: '奶龙', title: '吐息法师', sprite: 'hero_mage', weapon: 'wand', desc: '经验获取 +10%', bonus: { growth: 0.1 }, cost: 0, traitName: '奥术涌流', trait: '每次升级后 4 秒内冷却 -30%', ultName: '奶龙咆哮', ult: '奶龙吐出 30 颗追踪火球，每颗爆炸伤害周围敌人', charge: 'level' },
-    { id: 'rogue', name: '外卖侠', title: '快递刺客', sprite: 'hero_rogue', weapon: 'knife', desc: '移动速度 +15%', bonus: { moveSpeed: 0.15 }, cost: 500, traitName: '灵巧闪避', trait: '受到攻击时 12% 几率完全闪避', ultName: '影袭外卖', ult: '无敌冲刺穿过敌群，终点爆发一圈飞刀', charge: 'move' },
-    { id: 'knight', name: '铁桶哥', title: '铁桶武士', sprite: 'hero_knight', weapon: 'axe', desc: '护甲 +1，伤害 +10%', bonus: { armor: 1, might: 0.1 }, cost: 1000, traitName: '不屈铁壁', trait: '生命低于 50% 时护甲额外 +2', ultName: '铁桶盾墙', ult: '3 秒无敌，每 0.5 秒震出冲击波', charge: 'hurt' },
-    { id: 'nun', name: '包租婆', title: '气场担当', sprite: 'hero_nun', weapon: 'bible', desc: '每秒恢复 +0.4 生命', bonus: { recovery: 0.4 }, cost: 1500, traitName: '圣光庇护', trait: '每 40 秒获得 1 层护盾，抵挡一次伤害', ultName: '房租圣域', ult: '展开 6 秒圣域：域内回复生命、灼伤敌人、净化弹幕', charge: 'heal' },
-    { id: 'pyro', name: '喷子哥', title: '键盘炎术士', sprite: 'hero_pyro', weapon: 'fire', desc: '伤害 +15%', bonus: { might: 0.15 }, cost: 3000, traitName: '余烬', trait: '击败敌人时 12% 几率原地引燃小爆炸', ultName: '键盘陨星', ult: '召唤巨型陨石砸向敌群，留下大片火海', charge: 'kill' },
-    { id: 'bomber', name: '崽崽', title: '手雷王子', sprite: 'hero_bomber', weapon: 'bomb', desc: '最大生命 +30，范围 +15%', bonus: { maxHp: 30, area: 0.15 }, cost: 4000, traitName: '以爆制爆', trait: '受伤时 35% 几率引发爆炸；爆炸伤害减半', ultName: '崽崽轰炸', ult: '沿面朝方向投下一长串炸弹', charge: 'boom' },
-    { id: 'sage', name: '老村长', title: '贤者', sprite: 'hero_sage', weapon: 'lightning', desc: '冷却 -10%，范围 +10%', bonus: { cooldown: -0.1, area: 0.1 }, cost: 2500, traitName: '天雷', trait: '每 7 秒召唤 3 道落雷劈向屏幕内敌人', ultName: '村规天罚', ult: '4 秒雷暴，落雷不断劈向屏幕内的敌人', charge: 'time' },
-    { id: 'druid', name: '绿茶妹', title: '自然系', sprite: 'hero_druid', weapon: 'spikes', desc: '每秒恢复 +0.4，范围 +10%', bonus: { recovery: 0.4, area: 0.1 }, cost: 3000, traitName: '藤蔓缠绕', trait: '每 9 秒用藤蔓定住身边的敌人 1.5 秒', ultName: '绿茶藤蔓', ult: '藤蔓把周围敌人拉到身边缠住 2.5 秒，回复 15% 生命', charge: 'still' },
-    { id: 'prism', name: '彩虹大佬', title: '棱镜玩家', sprite: 'hero_prism', weapon: 'laser', desc: '暴击率 +8%，伤害 +10%', bonus: { crit: 0.08, might: 0.1 }, cost: 3500, traitName: '折射', trait: '暴击时 35% 几率折射到附近敌人（50% 伤害）', ultName: '彩虹爆发', ult: '向四面八方连射三轮彩虹光束', charge: 'crit' },
-    { id: 'fu', name: '福娃', title: '新春限定', sprite: 'hero_fu', weapon: 'bomb', desc: '金币 +30%，最大生命 +20', bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: '招财进宝', trait: '拾取金币时 20% 几率翻倍', ultName: '财神到', ult: '身边的小怪全部变成金币，精英怪受重创', charge: 'gold' },
-    { id: 'santa', name: '圣诞崽', title: '圣诞限定', sprite: 'hero_santa', weapon: 'frost', desc: '金币 +20%，冷却 -8%', bonus: { greed: 0.2, cooldown: -0.08 }, cost: -1, traitName: '圣诞礼物', trait: '每 70 秒身边掉落一个随机增益道具', ultName: '圣诞雪橇', ult: '雪橇飞过投下一串礼物炸弹，并送出一个增益道具', charge: 'time' },
+    { id: 'hunter', name: '我的刀盾', title: '刀盾狗', sprite: 'hero_hunter', weapon: 'whip', desc: '最大生命 +20', bonus: { maxHp: 20 }, cost: 0, traitName: '举盾格挡', trait: '每 12 秒举起刀盾，挡下一次伤害并盾击震退周围敌人', ultName: '刀盾风暴', ult: '2.5 秒内大刀旋转横扫，盾牌把周围敌方子弹弹反成飞刀', charge: 'combo' },
+    { id: 'mage', name: '奶龙', title: '喷火小龙', sprite: 'hero_mage', weapon: 'wand', desc: '经验获取 +10%', bonus: { growth: 0.1 }, cost: 0, traitName: '奶龙吐息', trait: '每 6 秒向最近敌人喷出扇形火焰，造成 2 倍伤害', ultName: '奶龙咆哮', ult: '连续喷火 4 秒，每秒造成 3 倍伤害', charge: 'kill', chargeDesc: '击败 100 个敌人充满' },
+    { id: 'rogue', name: '哈基米猫', title: '疾跑小猫', sprite: 'hero_rogue', weapon: 'knife', desc: '移动速度 +15%', bonus: { moveSpeed: 0.15 }, cost: 500, traitName: '猫猫疾走', trait: '持续移动 3 秒后移速 +20%，停下或受伤解除', ultName: '哈基米扑击', ult: '无敌扑击造成 6 倍范围伤害，随后移速 +30% 持续 3 秒', charge: 'move', chargeDesc: '移动 40 秒充满' },
+    { id: 'knight', name: '玛卡巴卡', title: '洗洗守卫', sprite: 'hero_knight', weapon: 'axe', desc: '护甲 +1，伤害 +10%', bonus: { armor: 1, might: 0.1 }, cost: 1000, traitName: '洗洗护盾', trait: '每 12 秒清除身边敌弹，获得一次抵伤护盾（不叠加）', ultName: '洗洗泡泡', ult: '泡泡持续 5 秒，每秒造成 1 倍伤害，普通敌人减速 50%', charge: 'time', chargeDesc: '每秒充能 2%' },
+    { id: 'nun', name: '香蕉猫', title: '哭泣香蕉', sprite: 'hero_nun', weapon: 'bible', desc: '每秒恢复 +0.4 生命', bonus: { recovery: 0.4 }, cost: 1500, traitName: '泪水小径', trait: '受伤时留下 3 秒泪水区，每秒造成 1 倍伤害、减速 30%', ultName: '香蕉哭哭波', ult: '哭泣 5 秒，每秒造成 2 倍伤害并回复最大生命 3%', charge: 'heal', chargeDesc: '累计回复等同最大生命的生命值充满' },
+    { id: 'pyro', name: 'Happy猫', title: '快乐蹦迪', sprite: 'hero_pyro', weapon: 'fire', desc: '伤害 +15%', bonus: { might: 0.15 }, cost: 3000, traitName: '开心欢呼', trait: '每击败 20 个敌人，攻击冷却缩短 20% 持续 3 秒（不叠加）', ultName: '快乐蹦蹦跳', ult: '蹦跳 5 次，每次造成 2 倍范围伤害并击退', charge: 'kill', chargeDesc: '击败 100 个敌人充满' },
+    { id: 'bomber', name: '哭哭猫', title: '委屈小猫', sprite: 'hero_bomber', weapon: 'bomb', desc: '最大生命 +30，范围 +15%', bonus: { maxHp: 30, area: 0.15 }, cost: 4000, traitName: '委屈护盾', trait: '低于 40% 生命时每 10 秒获得 2 秒护盾，吸收最大生命 10% 的伤害', ultName: '委屈冲击', ult: '造成 8 倍范围伤害，普通敌人向外逃离 3 秒', charge: 'hurt', chargeDesc: '累计承受等同最大生命的伤害充满' },
+    { id: 'sage', name: '波比猫', title: '弹嘴歌手', sprite: 'hero_sage', weapon: 'lightning', desc: '冷却 -10%，范围 +10%', bonus: { cooldown: -0.1, area: 0.1 }, cost: 2500, traitName: '波比弹嘴', trait: '每 5 秒向最近敌人发出穿透音波，造成 2 倍伤害', ultName: '波波音浪', ult: '3 秒内发出 6 圈音波，每圈造成 2 倍伤害', charge: 'time', chargeDesc: '每秒充能 2%' },
+    { id: 'druid', name: '耄耋猫', title: '哈气战士', sprite: 'hero_druid', weapon: 'spikes', desc: '每秒恢复 +0.4，范围 +10%', bonus: { recovery: 0.4, area: 0.1 }, cost: 3000, traitName: '猫猫爪击', trait: '每 4 秒爪击最近敌人，造成 3 倍伤害；低于半血时每 2 秒触发', ultName: '哈气连抓', ult: '朝最近敌人方向连抓 5 次，每次造成 2 倍伤害，期间免伤', charge: 'kill', chargeDesc: '击败 80 个敌人充满' },
+    { id: 'prism', name: 'Pepe青蛙', title: '悲伤蛙蛙', sprite: 'hero_prism', weapon: 'laser', desc: '暴击率 +8%，伤害 +10%', bonus: { crit: 0.08, might: 0.1 }, cost: 3500, traitName: '悲伤水洼', trait: '每 8 秒留下 4 秒水洼，每秒造成 1 倍伤害、减速 25%', ultName: '情绪洪流', ult: '洪流持续 4 秒，每秒造成 3 倍伤害并推开普通敌人', charge: 'time', chargeDesc: '每秒充能 2%' },
+    { id: 'fu', name: '招财猫', title: '新春限定', sprite: 'hero_fu', weapon: 'bomb', desc: '金币 +30%，最大生命 +20', bonus: { greed: 0.3, maxHp: 20 }, cost: -1, traitName: '招财进宝', trait: '拾取金币时有 20% 概率额外获得同额金币，额外金币不触发被动', ultName: '天降金币雨', ult: '5 波金币雨，每波造成 3 倍范围伤害，额外获得 10 金币', charge: 'gold', chargeDesc: '拾取 100 基础金币充满' },
+    { id: 'santa', name: '圣诞猫', title: '圣诞限定', sprite: 'hero_santa', weapon: 'frost', desc: '金币 +20%，冷却 -8%', bonus: { greed: 0.2, cooldown: -0.08 }, cost: -1, traitName: '圣诞礼物', trait: '每 30 秒在身边生成一个随机增益道具', ultName: '礼物大派送', ult: '投下 8 个礼物炸弹，每个造成 3 倍范围伤害', charge: 'time', chargeDesc: '每秒充能 2%' },
 ];
 
 // ---------------------------------------------------------------- 商店永久强化

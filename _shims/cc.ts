@@ -72,10 +72,10 @@ export const Layers = { Enum: { UI_2D: 1 << 25, UI_3D: 1 << 26, DEFAULT: 1 << 30
 
 // ---------------------------------------------------------------- 事件总线
 class Emitter {
-    private map = new Map<string, Set<(e: any) => void>>();
-    on(evt: string, cb: (e: any) => void, _t?: any) {
-        if (!this.map.has(evt)) this.map.set(evt, new Set());
-        this.map.get(evt)!.add(cb);
+    private map = new Map<string, Map<(e: any) => void, any>>();
+    on(evt: string, cb: (e: any) => void, target?: any) {
+        if (!this.map.has(evt)) this.map.set(evt, new Map());
+        this.map.get(evt)!.set(cb, target);
     }
     off(evt: string, cb?: (e: any) => void, _t?: any) {
         if (!cb) this.map.delete(evt);
@@ -83,7 +83,7 @@ class Emitter {
     }
     emit(evt: string, e?: any) {
         const set = this.map.get(evt);
-        if (set) for (const cb of Array.from(set)) { try { cb(e); } catch (err) { console.error(err); } }
+        if (set) for (const [cb, target] of Array.from(set)) { try { cb.call(target, e); } catch (err) { console.error(err); } }
     }
 }
 export const input = new Emitter();
@@ -138,7 +138,7 @@ class NodeBase {
     angle = 0;
     _pos = new Vec3();
     _scale = new Vec3(1, 1, 1);
-    private _listeners = new Map<string, Set<Listener>>();
+    private _listeners = new Map<string, Map<Listener, any>>();
     private _components: any[] = [];
     constructor(name = '') { this.name = name; }
 
@@ -161,9 +161,9 @@ class NodeBase {
         else { this._scale.x = x; this._scale.y = y ?? 1; this._scale.z = z ?? 1; }
     }
 
-    on(evt: string, cb: Listener, _t?: any) {
-        if (!this._listeners.has(evt)) this._listeners.set(evt, new Set());
-        this._listeners.get(evt)!.add(cb);
+    on(evt: string, cb: Listener, target?: any) {
+        if (!this._listeners.has(evt)) this._listeners.set(evt, new Map());
+        this._listeners.get(evt)!.set(cb, target);
     }
     off(evt: string, cb?: Listener) {
         if (!cb) this._listeners.delete(evt);
@@ -171,7 +171,7 @@ class NodeBase {
     }
     emit(evt: string, e?: any) {
         const set = this._listeners.get(evt);
-        if (set) for (const cb of Array.from(set)) { try { cb(e); } catch (err) { console.error(err); } }
+        if (set) for (const [cb, t] of Array.from(set)) { try { cb.call(t, e); } catch (err) { console.error(err); } }
     }
     hasListeners(evt: string) { return !!this._listeners.get(evt)?.size; }
     listenerCount(evt: string) { return this._listeners.get(evt)?.size || 0; }
@@ -429,67 +429,82 @@ export class Renderer2D {
         ctx.clearRect(0, 0, W, H);
         ctx.fillStyle = '#121612';
         ctx.fillRect(0, 0, W, H);
-        this.drawNode(ctx, root, 0, 0, 1);
+        ctx.translate(0, H);
+        ctx.scale(1, -1);
+        this.drawNode(ctx, root);
         ctx.restore();
     }
 
-    private drawNode(ctx: CanvasRenderingContext2D, n: NodeBase, ox: number, oy: number, os: number) {
-        if (!n.active) return;
-        const x = ox + n._pos.x * os;
-        const y = oy + n._pos.y * os;
-        const s = os * n._scale.x; // 只用 x 缩放（游戏里 xy 同步）
-        const rot = (n.angle * Math.PI) / 180;
+    private tintCache = new Map<string, HTMLCanvasElement>();
 
+    private drawNode(ctx: CanvasRenderingContext2D, n: NodeBase) {
+        if (!n.active) return;
+        ctx.save();
+        ctx.translate(n._pos.x, n._pos.y);
+        ctx.rotate(n.angle * Math.PI / 180);
+        ctx.scale(n._scale.x, n._scale.y);
+        const ut = n.getComponent(UITransform);
         const sp = n.getComponent(Sprite) as Sprite | null;
         const lb = n.getComponent(Label) as Label | null;
-
-        if (sp && sp.spriteFrame && sp.spriteFrame.rect && this.atlasCanvas) {
+        if (sp?.spriteFrame?.rect && this.atlasCanvas) {
             const r = sp.spriteFrame.rect;
-            ctx.save();
-            ctx.translate(x, y);
-            if (rot) ctx.rotate(-rot); // Cocos 角度逆时针为正，canvas 顺时针为正
-            const w = r.width * s, h = r.height * s;
-            const ax = 0.5, ay = 0.5; // Sprite 默认中心锚点（RAW/CUSTOM 情况下 UiKit 会改 UITransform，这里近似）
-            const dx = -w * ax, dy = h * ay; // y 翻转
-            ctx.imageSmoothingEnabled = false;
+            const custom = sp.sizeMode === Sprite.SizeMode.CUSTOM;
+            const w = custom && ut?.width ? ut.width : r.width;
+            const h = custom && ut?.height ? ut.height : r.height;
+            const ax = ut?.anchorX ?? 0.5, ay = ut?.anchorY ?? 0.5;
             const col = sp.color;
-            if (col && (col.r !== 255 || col.g !== 255 || col.b !== 255 || col.a !== 255)) {
-                // 着色：先画到临时再染色开销大；简单用 globalAlpha + 滤镜近似
-                ctx.globalAlpha = (col.a ?? 255) / 255;
-                if (col.r !== 255 || col.g !== 255 || col.b !== 255) {
-                    ctx.filter = `rgb(${col.r},${col.g},${col.b})`;
-                }
-            }
-            ctx.drawImage(this.atlasCanvas, r.x, r.y, r.width, r.height, dx, dy, w, h);
-            ctx.filter = 'none';
-            ctx.globalAlpha = 1;
-            ctx.restore();
-        } else if (sp && !sp.spriteFrame) {
-            // 无贴图矩形（理论不出现，mkRect 用 white 帧）
-        }
-
-        if (lb && lb.string) {
             ctx.save();
-            ctx.translate(x, y);
-            if (rot) ctx.rotate(-rot);
-            const size = lb.fontSize * s;
-            ctx.font = `${lb.isBold ? 'bold ' : ''}${size}px sans-serif`;
+            // Local geometry is y-up; pixels remain upright inside that geometry.
+            ctx.scale(1, -1);
+            ctx.imageSmoothingEnabled = false;
+            ctx.globalAlpha = (col?.a ?? 255) / 255;
+            let source: HTMLCanvasElement = this.atlasCanvas;
+            let sx = r.x, sy = r.y;
+            if (col && (col.r !== 255 || col.g !== 255 || col.b !== 255)) {
+                const key = `${r.x},${r.y},${r.width},${r.height}:${col.r},${col.g},${col.b}`;
+                let tinted = this.tintCache.get(key);
+                if (!tinted) {
+                    tinted = document.createElement('canvas');
+                    tinted.width = r.width; tinted.height = r.height;
+                    const t = tinted.getContext('2d')!;
+                    t.drawImage(this.atlasCanvas, r.x, r.y, r.width, r.height, 0, 0, r.width, r.height);
+                    t.globalCompositeOperation = 'multiply';
+                    t.fillStyle = `rgb(${col.r},${col.g},${col.b})`;
+                    t.fillRect(0, 0, r.width, r.height);
+                    t.globalCompositeOperation = 'destination-in';
+                    t.drawImage(this.atlasCanvas, r.x, r.y, r.width, r.height, 0, 0, r.width, r.height);
+                    if (this.tintCache.size >= 256) this.tintCache.delete(this.tintCache.keys().next().value!);
+                    this.tintCache.set(key, tinted);
+                }
+                source = tinted; sx = sy = 0;
+            }
+            ctx.drawImage(source, sx, sy, r.width, r.height, -w * ax, -h * (1 - ay), w, h);
+            ctx.restore();
+        }
+        if (lb?.string) {
+            ctx.save(); ctx.scale(1, -1);
+            ctx.font = `${lb.isBold ? 'bold ' : ''}${lb.fontSize}px sans-serif`;
             ctx.textAlign = (['left', 'center', 'right'] as const)[lb.horizontalAlign] || 'center';
             ctx.textBaseline = 'middle';
             const col = lb.color;
-            if (lb.enableOutline) {
-                const oc = lb.outlineColor;
-                ctx.strokeStyle = `rgba(${oc.r},${oc.g},${oc.b},${(oc.a ?? 255) / 255})`;
-                ctx.lineWidth = lb.outlineWidth * s;
-                ctx.strokeText(lb.string, 0, 0);
-            }
-            ctx.fillStyle = `rgba(${col.r},${col.g},${col.b},${(col.a ?? 255) / 255})`;
-            ctx.fillText(lb.string, 0, 0);
+            const lines = lb.string.split('\n');
+            lines.forEach((line, i) => {
+                const y = (i - (lines.length - 1) / 2) * lb.lineHeight;
+                if (lb.enableOutline) {
+                    const oc = lb.outlineColor;
+                    ctx.strokeStyle = `rgba(${oc.r},${oc.g},${oc.b},${(oc.a ?? 255) / 255})`;
+                    ctx.lineWidth = lb.outlineWidth;
+                    ctx.strokeText(line, 0, y);
+                }
+                ctx.fillStyle = `rgba(${col.r},${col.g},${col.b},${(col.a ?? 255) / 255})`;
+                ctx.fillText(line, 0, y);
+            });
             ctx.restore();
         }
-
-        for (const ch of n.children) this.drawNode(ctx, ch, x, y, s);
+        for (const ch of n.children) this.drawNode(ctx, ch);
+        ctx.restore();
     }
+
 }
 
 export const renderer = new Renderer2D();

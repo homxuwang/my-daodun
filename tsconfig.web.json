@@ -26,7 +26,7 @@
   },
   "include": [
     "assets/scripts/**/*.ts",
-    "assets/web-main.ts",
+    "_shims/web-main.ts",
     "_shims/cc.ts",
     "_shims/cc-env.ts"
   ],
