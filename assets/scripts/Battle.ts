@@ -1583,7 +1583,7 @@ export class Battle {
                 this.traitT = 12;
                 if (this.shieldHits < 1) { this.shieldHits = 1; this.burst(this.px, this.py, 0xf5c542, 10, 180); }
                 break;
-            case 'mage': this.traitT = 6; this.memeCone(2, 0xffa030, 220, Math.PI / 3); break;
+            case 'mage': this.traitT = 6; this.memeCone(2, 0xffe2ac, 220, Math.PI / 3); break;
             case 'knight':
                 this.traitT = 12;
                 this.shieldHits = Math.max(1, this.shieldHits);
@@ -1722,7 +1722,7 @@ export class Battle {
                 const aim = this.memeAim();
                 for (let i = -2; i <= 2; i++) {
                     const a = aim + i * Math.PI / 8;
-                    this.lineFx(this.px, this.py, this.px + Math.cos(a) * 260, this.py + Math.sin(a) * 260, 0xffa030, 12);
+                    this.lineFx(this.px, this.py, this.px + Math.cos(a) * 260, this.py + Math.sin(a) * 260, 0xffedcc, 12);
                 }
             } else if (this.isChar('knight')) {
                 const a = this.time * 4;
@@ -1736,7 +1736,7 @@ export class Battle {
         while (this.ultTick <= 1e-8) {
             this.ultTick += this.memeUltInterval();
             switch (this.char.id) {
-                case 'mage': this.memeCone(3, 0xff922b, 260, Math.PI / 2); break;
+                case 'mage': this.memeCone(3, 0xffe2ac, 260, Math.PI / 2); break;
                 case 'knight': this.memePulse(180, 1, 0xa0ecff); Sound.play('power'); break;
                 case 'nun': this.memePulse(200, 2, 0x81cfff); this.heal(this.stats.maxHp * 0.03); break;
                 case 'pyro': this.memePulse(180, 2, 0xffd980, 250); Sound.play('slam'); break;

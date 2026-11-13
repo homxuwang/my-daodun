@@ -93,7 +93,7 @@ try {
   const point=await page.evaluate(async text=>{const {Label}=await import('cc');let found=null;function walk(n){if(!n.active)return;const l=n.getComponent(Label);if(l?.string===text)found=n;for(const c of n.children)walk(c);}walk(window.__scene);if(!found)throw Error('Missing label '+text);let x=0,y=0;for(let n=found;n;n=n.parent){x+=n.position.x;y+=n.position.y;}const r=document.getElementById('game').getBoundingClientRect();return {x:r.left+x/720*r.width,y:r.top+(1280-y)/1280*r.height};},text);
   await page.mouse.click(point.x,point.y);
  };
- await clickLabel('奶龙');assert.equal(await page.evaluate(async()=>{const {Save}=await import('./js/assets/scripts/Save.js');return Save.data.selected;}),'mage');
+ await clickLabel('奶蛙');assert.equal(await page.evaluate(async()=>{const {Save}=await import('./js/assets/scripts/Save.js');return Save.data.selected;}),'mage');
  await clickLabel('出发!');await page.waitForTimeout(100);
  if(await page.evaluate(()=>window.__game.state)!=='play'){await page.keyboard.press('1');await page.waitForTimeout(100);}
  assert.equal(await page.evaluate(()=>window.__game.state),'play');
