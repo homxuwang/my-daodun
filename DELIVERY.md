@@ -263,10 +263,15 @@ f048a46 (本次修复) fix: 触摸派发修复 - EventTouch 实例复用 + overl
 ## 联系与协议
 
 - **项目名称**：刀盾闯关
-- **参考来源**：https://github.com/ychisbest/milky-frog（已完全重命名，无直接复制）
+- **参考工程原作者**：ychisbest（https://github.com/ychisbest）
+- **参考来源**：milky-frog（奶蛙割草），https://github.com/ychisbest/milky-frog；本作在参考工程基础上进行了改造。
 - **技术支持**：Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 - **许可证**：未指定（建议根据商用需求添加 LICENSE）
 
 ---
 
 ✅ **交付完成，可直接用于小程序上线准备。**
+
+## 12+ 备案材料修复（2026-11-16）
+
+完整适龄标识、启动页与菜单健康忠告、适龄说明和对应填写文本见 [备案材料](docs/review-materials/README.md)。截图为浏览器验证产物；微信提审前须重新构建并核对真机画面，不能沿用旧包与旧截图。

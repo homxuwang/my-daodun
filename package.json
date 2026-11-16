@@ -16,7 +16,8 @@
     "check:cocos": "tsc -p tools/tsconfig.cocos-check.json",
     "check:wechat": "node tools/wechat-preflight.mjs --environment --package build/wechatgame --report docs/validation/wechat-preflight.json",
     "test:wechat": "node tools/tests/wechat-release.mjs",
-    "test:launch": "node tools/tests/launch-smoke.mjs"
+    "test:launch": "node tools/tests/launch-smoke.mjs",
+    "test:review": "node tools/tests/review-materials.mjs"
   },
   "devDependencies": {
     "@cocos/creator-types": "3.8.8",

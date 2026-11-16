@@ -1,0 +1,16 @@
+// Keep game screens, the age explanation and filing text consistent.
+export const AGE_RATING = '12+';
+export const SPLASH_MIN_SECONDS = 4;
+export const HEALTH_TITLE = '健康游戏忠告';
+export const HEALTH_TIP = [
+    '抵制不良游戏，拒绝盗版游戏。',
+    '注意自我保护，谨防受骗上当。',
+    '适度游戏益脑，沉迷游戏伤身。',
+    '合理安排时间，享受健康生活。',
+].join('\n');
+export const AGE_TIP = [
+    '1. 本游戏是一款卡通像素风格的动作生存游戏，适合年满12周岁及以上的用户，建议未成年人在监护人指导下使用。',
+    '2. 游戏包含虚构的角色与怪物对抗、自动攻击和夸张技能特效。玩家通过移动躲避、选择升级和规划资源完成挑战。',
+    '3. 未成年人应遵守微信平台的实名验证与防沉迷要求，合理安排游戏时间。监护人应关注未成年人的游戏行为。',
+    '4. 游戏内不提供独立账号注册、充值或付费购买，也不提供聊天或用户上传内容。金币通过游玩和活动获得，不能交易或提现。',
+].join('\n\n');

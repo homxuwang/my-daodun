@@ -12,6 +12,8 @@ import { Battle, blessingOptions, describe, Option } from './Battle';
 import { ACHIEVEMENTS, BLESSINGS, BlessingDef, BOSS_SCHEDULE, CHARGE_DESC, EPIC_TIME, DAILY_GOAL, DAILY_REWARD, dailySetup, activeEvent, EVENTS, STAGES, CHARACTERS, CharDef, codexEntries, dailyQuests, QuestDef, QUEST_BONUS, SIGNIN_REWARDS, CodexEntry, CodexTab, ENEMIES, POWERUPS, powerUpCost, WEAPONS, WIN_TIME } from './Defs';
 import { paginate, PRIVACY_VER, privacyPolicy, privacySummary, userTerms } from './Legal';
 import { Recorder } from './Recorder';
+import { AGE_RATING, AGE_TIP, HEALTH_TITLE, HEALTH_TIP, SPLASH_MIN_SECONDS } from './ReviewInfo';
+export { AGE_RATING } from './ReviewInfo';
 import { Save } from './Save';
 import { Challenge, Social } from './Social';
 import { Sound, vibrate } from './Sound';
@@ -26,7 +28,6 @@ export const DESIGN_H = 1280;
 // 游戏名与适龄提示（上架前与微信后台填写的保持一致）
 export const GAME_NAME = '刀盾闯关';
 export const GAME_SUBTITLE = 'MY KNIFE & SHIELD';
-export const AGE_RATING = '12+';
 export const GAME_VERSION = 'v1.0.0';
 // 新手渐进解锁：完成 N 局后开放（只影响主菜单入口，不影响局内数值）
 const UNLOCKS: { id: string; name: string; runs: number }[] = [
@@ -39,17 +40,6 @@ const UNLOCKS: { id: string; name: string; runs: number }[] = [
 ];
 // 点击主界面刀盾时随机说的话
 const FROG_LINES = ['菜是原罪！', '刀盾出击!', '奶蛙助阵!', '今天也要割草', '红月来了也不怕!', '再来一局', '别戳了, 疼!', '满级必胜!'];
-const AGE_TIP = [
-    '1. 本游戏是一款休闲动作类游戏，适用于年满 12 周岁及以上的用户，',
-    '    建议未成年人在家长监护下使用游戏产品。',
-    '2. 本游戏为卡通像素画风，角色与怪物均为可爱的卡通形象，',
-    '    对抗内容轻度、无血腥恐怖画面，无基于真实历史和现实事件的改编内容。',
-    '3. 本游戏无需注册账号，没有充值和付费内容，',
-    '    游戏内金币只能通过游玩免费获得，不能交易。',
-    '4. 游戏有助于锻炼反应能力与策略规划能力，',
-    '    请合理安排游戏时间，注意劳逸结合。',
-].join('\n');
-const HEALTH_TIP = '抵制不良游戏，拒绝盗版游戏。\n注意自我保护，谨防受骗上当。\n适度游戏益脑，沉迷游戏伤身。\n合理安排时间，享受健康生活。';
 const C_AD = new Color(150, 90, 20, 255);
 
 type State = 'splash' | 'privacy' | 'legal' | 'menu' | 'daily' | 'rank' | 'chars' | 'shop' | 'settings' | 'achv' | 'codex' | 'signin' | 'play' | 'levelup' | 'chest' | 'pause' | 'revive' | 'victory' | 'dying' | 'result';
@@ -414,13 +404,19 @@ export class GameRoot extends Component {
         this.buildTutorial();
 
         // 适龄提示弹窗（最上层，启动页与主菜单的标识都能打开）
-        this.ageNode = mkPanel(this.ui, 680, 420).node;
-        this.ageNode.setPosition(0, this.vh * 0.05);
-        mkLabel(this.ageNode, '适龄提示', 34, C_GOLD, 'center', 3).node.setPosition(0, 165);
-        mkLabel(this.ageNode, AGE_TIP, 19, C_WHITE, 'left', 2).node.setPosition(-315, 0);
-        mkLabel(this.ageNode, '点击关闭', 18, C_GREY, 'center', 2).node.setPosition(0, -180);
+        this.ageNode = mkPanel(this.ui, 680, 830).node;
+        this.ageNode.name = 'AgeExplanation';
+        this.ageNode.setPosition(0, 0);
+        mkLabel(this.ageNode, '适龄提示说明', 34, C_GOLD, 'center', 3).node.setPosition(0, 360);
+        mkSprite(this.ageNode, 'age_rating_12', 96 / 135).node.setPosition(-246, 250);
+        mkLabel(this.ageNode, GAME_NAME, 32, C_WHITE, 'center', 2).node.setPosition(55, 280);
+        mkLabel(this.ageNode, '适合12周岁及以上用户', 24, C_WHITE, 'center', 2).node.setPosition(55, 228);
+        const ageText = mkLabel(this.ageNode, paginate(AGE_TIP, 28, 100)[0], 22, C_WHITE, 'left', 1);
+        ageText.lineHeight = 30;
+        ageText.node.setPosition(-308, -65);
+        mkButton(this.ageNode, '关闭', 260, 72, () => { this.ageNode.active = false; }, C_BTN_BLUE, 28).node.setPosition(0, -360);
         this.ageNode.active = false;
-        this.ageNode.on(Node.EventType.TOUCH_END, () => { this.ageNode.active = false; });
+        this.ageNode.on(Node.EventType.TOUCH_END, (e: EventTouch) => { e.propagationStopped = true; });
 
         this.toast = mkLabel(this.ui, '', 30, C_WHITE, 'center', 4);
         this.toast.node.setPosition(0, -this.vh * 0.3);
@@ -680,14 +676,18 @@ export class GameRoot extends Component {
         }
     }
 
-    // 适龄提示标识（CADPA 规范：12+ 为蓝色，放在左上角，点击查看适龄提示）
+    // Complete standard 12+ artwork; keep its original aspect ratio and click-through explanation.
     private ageBadge(parent: Node, x: number, y: number) {
-        const p = mkPanel(parent, 84, 88, new Color(0, 112, 192, 255), new Color(255, 255, 255, 255));
-        p.node.setPosition(x, y);
-        mkLabel(p.node, AGE_RATING, 34, C_WHITE, 'center', 0).node.setPosition(0, 10);
-        mkLabel(p.node, 'CADPA', 15, C_WHITE, 'center', 0).node.setPosition(0, -26);
-        p.node.on(Node.EventType.TOUCH_END, () => { Sound.play('click'); this.showAgeTip(); });
-        return p;
+        const badge = mkSprite(parent, 'age_rating_12', 96 / 135);
+        badge.node.name = 'AgeRatingBadge';
+        badge.node.getComponent(UITransform)!.setContentSize(135, 173);
+        badge.node.setPosition(x, y);
+        badge.node.on(Node.EventType.TOUCH_END, (e: EventTouch) => {
+            e.propagationStopped = true;
+            Sound.play('click');
+            this.showAgeTip();
+        });
+        return badge;
     }
 
     private showAgeTip() {
@@ -759,7 +759,7 @@ export class GameRoot extends Component {
         const gold = mkLabel(goldPanel.node, '', 28, C_GOLD, 'left', 3);
         gold.node.setPosition(-46, 0);
         const daily = mkLabel(s, '今日首局 金币×2', 20, new Color(255, 214, 90, 255), 'left', 3);
-        daily.node.setPosition(-this.vw / 2 + 108, top - 40);
+        daily.node.setPosition(-this.vw / 2 + 122, top - 40);
         // 限时活动提示
         const ev = mkLabel(s, '', 22, new Color(255, 120, 90, 255), 'center', 3);
         ev.node.setPosition(0, titleY - 128);
@@ -768,10 +768,14 @@ export class GameRoot extends Component {
             ev.node.active = !!cur;
             if (cur && ev.string !== cur.badge) ev.string = cur.badge;
         });
-        this.ageBadge(s, -this.vw / 2 + 56, top - 48);
+        this.ageBadge(s, -this.vw / 2 + 62, top - 72);
 
         const best = mkLabel(s, '', 22, C_GREY, 'center', 2);
         best.node.setPosition(0, this.bottom + 46);
+        mkLabel(s, HEALTH_TITLE, 19, C_WHITE, 'center', 1).node.setPosition(0, this.bottom + 171);
+        const homeHealth = mkLabel(s, HEALTH_TIP, 16, C_WHITE, 'center', 1);
+        homeHealth.lineHeight = 22;
+        homeHealth.node.setPosition(0, this.bottom + 112);
         mkLabel(s, GAME_VERSION, 16, new Color(120, 110, 140, 255), 'left', 2).node.setPosition(-this.vw / 2 + 12, this.bottom + 14);
 
         mkButton(s, '开始游戏', 440, 100, () => this.startGame(), C_BTN_GREEN, 40).node.setPosition(0, btnTop);
@@ -1097,6 +1101,9 @@ export class GameRoot extends Component {
             stats.string = `游戏次数  ${d.runs}\n胜利次数  ${d.wins}\n累计击败  ${d.totalKills}\n最长存活  ${this.fmtTime(d.bestTime)}`;
         });
         const docY = this.bottom + 188;
+        const credits = mkLabel(s, '参考工程原作者：ychisbest\n原作：milky-frog（奶蛙割草）\ngithub.com/ychisbest/milky-frog', 20, C_GREY, 'center', 2);
+        credits.lineHeight = 26;
+        credits.node.setPosition(0, docY + 116);
         mkButton(s, '《用户协议》', 250, 72, () => this.openDoc('terms'), C_BTN_GREY, 24).node.setPosition(-140, docY);
         mkButton(s, '《隐私政策》', 250, 72, () => this.openDoc('privacy'), C_BTN_GREY, 24).node.setPosition(140, docY);
         mkButton(s, '返回', 300, 88, () => this.setState('menu'), C_BTN_BLUE).node.setPosition(0, this.bottom + 80);
@@ -1286,11 +1293,13 @@ export class GameRoot extends Component {
         mkRect(s, 448, 22, new Color(20, 10, 30, 255), 'barBg').node.setPosition(0, barY);
         this.splashFill = mkRect(s, 440, 14, new Color(255, 214, 90, 255), 'barFill', 0, 0.5).node;
         this.splashFill.setPosition(-220, barY);
-        mkLabel(s, '健康游戏忠告', 26, C_WHITE, 'center', 2).node.setPosition(0, -this.vh * 0.2);
-        mkLabel(s, HEALTH_TIP, 21, new Color(200, 190, 210, 255), 'center', 2).node.setPosition(0, -this.vh * 0.285);
-        this.ageBadge(s, -this.vw / 2 + 56, this.top - 48);
+        mkLabel(s, HEALTH_TITLE, 30, C_WHITE, 'center', 2).node.setPosition(0, -this.vh * 0.2);
+        const health = mkLabel(s, HEALTH_TIP, 26, C_WHITE, 'center', 1);
+        health.lineHeight = 38;
+        health.node.setPosition(0, -this.vh * 0.305);
+        this.ageBadge(s, -this.vw / 2 + 62, this.top - 72);
         s.addComponent(UITransform).setContentSize(this.vw, this.vh);
-        s.on(Node.EventType.TOUCH_END, () => { if (this.splashT > 1) this.afterSplash(); });
+        s.on(Node.EventType.TOUCH_END, () => { if (this.splashT >= SPLASH_MIN_SECONDS) this.afterSplash(); });
         this.refreshers.push(() => { this.splashHero.spriteFrame = Art.f(this.selectedChar().sprite + '_0'); });
     }
 
@@ -1306,13 +1315,13 @@ export class GameRoot extends Component {
         const hop = Math.abs(Math.sin(t * 4.5)) * 26;
         this.splashHero.node.setPosition(0, this.splashHeroBaseY + hop);
         this.splashHero.spriteFrame = Art.f(this.selectedChar().sprite + (hop > 8 ? '_2' : '_1'));
-        const p = Math.min(1, t / 2.3);
+        const p = Math.min(1, t / SPLASH_MIN_SECONDS);
         this.splashFill.setScale(p, 1, 1);
         this.splashLoad.string = `正在召唤刀盾… ${Math.floor(p * 100)}%`;
     }
 
     private afterSplash() {
-        if (this.state !== 'splash') return;
+        if (this.state !== 'splash' || this.splashT < SPLASH_MIN_SECONDS || this.ageNode?.active) return;
         this.setState(this.privacyAccepted() ? 'menu' : 'privacy');
     }
 
@@ -2238,7 +2247,7 @@ export class GameRoot extends Component {
         this.keys.add(e.keyCode);
         const k = e.keyCode;
         const confirm = k === KeyCode.ENTER || k === KeyCode.SPACE;
-        if (this.state === 'splash') { if (this.splashT > 1) this.afterSplash(); return; }
+        if (this.state === 'splash') { if (this.splashT >= SPLASH_MIN_SECONDS) this.afterSplash(); return; }
         if (this.state === 'levelup') {
             if (k >= KeyCode.DIGIT_1 && k <= KeyCode.DIGIT_3) this.choose(k - KeyCode.DIGIT_1);
             if (k === KeyCode.KEY_R) this.reroll();
@@ -2296,9 +2305,9 @@ export class GameRoot extends Component {
         this.t += dt;
         this.layout();
         if (this.state === 'splash') {
-            this.splashT += dt;
+            if (!this.ageNode?.active) this.splashT += dt;
             this.updateSplashFx(dt);
-            if (this.splashT > 2.5) this.afterSplash();
+            if (this.splashT >= SPLASH_MIN_SECONDS) this.afterSplash();
         } else if (this.state === 'victory') {
             this.updateVictory(dt);
         } else if (this.state === 'dying') {

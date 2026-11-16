@@ -4,6 +4,14 @@
 参考 [milky-frog（奶蛙割草）](https://github.com/ychisbest/milky-frog) 的架构与数值，
 目标平台：微信小游戏、抖音小游戏（另附浏览器预览）。
 
+## 原作者与参考来源
+
+参考工程原作者：[ychisbest](https://github.com/ychisbest)。
+原作：[milky-frog（奶蛙割草）](https://github.com/ychisbest/milky-frog)。
+本作在参考工程基础上调整了角色、美术、技能、展示文案及浏览器／小游戏适配。游戏内“设置”页展示相同署名与来源链接。
+
+此署名说明参考来源，不代表原作者为本作背书或已授予额外的素材／商业使用授权。
+
 设计文档：`docs/design-overview.md`（IP/怪物/武器替换表）、`docs/release-checklist.md`（上架清单）、参考工程 `docs/数值设计.md`（数值曲线）。
 
 ## 目录

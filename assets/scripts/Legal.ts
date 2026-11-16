@@ -1,10 +1,11 @@
 import { SOCIAL_CONFIG } from './SocialConfig';
+import { AGE_RATING } from './ReviewInfo';
 
 // 微信小游戏不能打开网页，外链会无反应、报错或被判跳到其他小游戏。
 // 协议必须在游戏内展示全文，不要改成 URL 或跳转其他小程序。
 // 改协议正文时把 PRIVACY_VER 加 1，已同意过的玩家会再看一次弹窗。
-export const PRIVACY_VER = 1;
-const UPDATED = '2026年10月26日';
+export const PRIVACY_VER = 3;
+const UPDATED = '2026年11月16日';
 
 // 按每行大致字数折行，再按行数分页。全角算 1，半角算 0.5。
 export function paginate(text: string, cols: number, rows: number): string[] {
@@ -77,10 +78,10 @@ export function userTerms(gameName: string): { title: string; body: string } {
             SOCIAL_CONFIG.friendRank ? '最长存活、击败数量和每日挑战成绩会提交给微信，只用于好友排行展示。' : '当前版本不会把游戏成绩提交到网上。',
             '',
             '6. 未成年人保护',
-            '本游戏适龄提示为 12+。未成年人应在监护人指导下使用，并合理安排游戏时间。启动页展示健康游戏忠告。防沉迷由微信小游戏平台统一处理。',
+            `本游戏适龄提示为 ${AGE_RATING}。未成年人应在监护人指导下使用，并合理安排游戏时间，遵守微信平台的实名验证与防沉迷要求。启动页展示健康游戏忠告。`,
             '',
             '7. 知识产权',
-            '本游戏的程序、美术、音乐和文字的知识产权归运营者所有。未经许可，不要复制、修改或传播。',
+            '本作参考工程为 milky-frog（奶蛙割草），原作者为 ychisbest，来源为 https://github.com/ychisbest/milky-frog。本作对角色、美术、技能与平台适配等进行了调整。第三方内容的权利归相应权利人，署名不代表额外授权。',
             '',
             '8. 免责与变更',
             '因不可抗力、平台政策或网络原因导致无法游戏的，运营者不承担责任。协议更新后，会在游戏内重新展示。你继续游戏，即表示接受更新后的协议。',
@@ -123,7 +124,7 @@ export function privacyPolicy(gameName: string): { title: string; body: string }
             cloud,
             '',
             '5. 未成年人',
-            '我们不收集未成年人的个人信息。适龄提示为 12+。请监护人指导未成年人使用，并控制游戏时间。',
+            `我们不收集未成年人的个人信息。适龄提示为 ${AGE_RATING}。请监护人指导未成年人使用，并控制游戏时间。`,
             '',
             '6. 你的权利',
             '你可以随时在微信里删除本小游戏，手机里的本地数据会一并清除。不再使用本游戏，就不会再产生新的游戏数据。',

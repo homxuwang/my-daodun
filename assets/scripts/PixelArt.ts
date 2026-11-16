@@ -1,3 +1,4 @@
+import { REVIEW_BADGE_12 } from './ReviewBadge';
 import { MEME_ART } from './MemeArt';
 
 // 纯数据的像素画生成器（不依赖 cc），所有贴图都在这里程序化绘制并打包成图集。
@@ -2561,6 +2562,14 @@ export function drawMemeHero(kind: string, frame = 0): PixelCanvas {
 
 export function allSprites(): Record<string, PixelCanvas> {
     const s: Record<string, PixelCanvas> = {};
+    const badge = new PixelCanvas(REVIEW_BADGE_12.w, REVIEW_BADGE_12.h);
+    let pixel = 0;
+    for (let i = 0; i < REVIEW_BADGE_12.runs.length; i += 2) {
+        const count = REVIEW_BADGE_12.runs[i], color = REVIEW_BADGE_12.palette[REVIEW_BADGE_12.runs[i + 1]];
+        for (let k = 0; k < count; k++) badge.px((pixel + k) % badge.w, Math.floor((pixel + k) / badge.w), color & 0xffffff, color >>> 24);
+        pixel += count;
+    }
+    s.age_rating_12 = badge;
     for (const k of HERO_KINDS) {
         for (let f = 0; f < 3; f++) {
             s['hero_' + k + '_' + f] = k === 'hunter'
